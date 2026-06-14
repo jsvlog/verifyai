@@ -660,7 +660,7 @@ function computeSentenceSignals(sentence: string): SentenceSignals {
   AI_TRIGRAMS.forEach(tg => {
     if (cleanSentence.includes(tg)) trigramHits++;
   });
-  const aiPhrases = clamp(bigramHits * 0.35 + trigramHits * 0.55, 0, 1);
+  const aiPhrases = clamp(bigramHits * 0.50 + trigramHits * 0.70, 0, 1);
 
   // Human markers in sentence
   let contractionHits = 0;
