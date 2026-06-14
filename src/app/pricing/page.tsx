@@ -124,16 +124,16 @@ export default function PricingPage() {
                 ))}
               </ul>
 
-              <Link
+              <a
                 href={`/api/checkout?plan=${encodeURIComponent(plan.name)}`}
-                className={`w-full text-center py-3 text-sm font-semibold rounded-xl transition-all ${
+                className={`w-full text-center py-3 text-sm font-semibold rounded-xl transition-all inline-block ${
                   plan.popular
                     ? 'btn-primary'
                     : 'text-[#ff6b6b] border-2 border-[#ff6b6b] hover:bg-[#fff5f5]'
                 }`}
               >
                 Get {plan.name}
-              </Link>
+              </a>
             </div>
           ))}
         </div>
