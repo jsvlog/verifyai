@@ -40,7 +40,9 @@ export async function detectAI(input: DetectionInput): Promise<DetectionOutput> 
     try {
       const results = await modelPipeline(input.text.slice(0, 512));
       const top = results[0];
-      const isAI = top.label === 'AI' || top.label === 'LABEL_1';
+      // Model labels: "Fake"/"Real" (OpenAI detector). Also handle generic LABEL_0/LABEL_1.
+      const label = (top.label || '').toLowerCase();
+      const isAI = label === 'fake' || label === 'label_0' || label === 'ai';
       const score = Math.round((isAI ? top.score : 1 - top.score) * 1000) / 10;
       return { score, humanScore: Math.round((100 - score) * 10) / 10, backend: 'model', sentences: [], timeMs: Math.round(performance.now() - t0) };
     } catch {}
