@@ -233,6 +233,26 @@ const AI_BIGRAMS = new Set([
   'nature of the', 'scope of the', 'impact of the', 'role of the',
   'context of the', 'essence of the', 'dynamics of the', 'implications of the',
   'framework of the', 'trajectory of the', 'nuances of the', 'intricacies of the',
+  // === AI narrative / storytelling patterns (AI-generated fiction tells) ===
+  'seemed to', 'as if he', 'as if she', 'as if it', 'as if they',
+  'filled with', 'could feel', 'could see', 'could hear',
+  'looked up at', 'looked down at', 'turned to look', 'glanced over at',
+  'let out a', 'took a deep', 'felt a surge', 'heart raced',
+  'eyes widened', 'eyes filled', 'eyes sparkled', 'eyes met',
+  'smile spread', 'smiled softly', 'smiled warmly', 'face lit up',
+  'tears streamed', 'tears welled', 'tears fell', 'voice barely',
+  'voice trembled', 'voice cracked', 'said softly', 'whispered softly',
+  'arms around', 'wrapped her', 'wrapped his', 'pulled her',
+  'held her', 'held him', 'held onto', 'clung to',
+  'would remember', 'would never forget', 'would always remember',
+  'reminded her', 'reminded him', 'reminded them',
+  'she knew', 'he knew', 'they knew', 'she realized', 'he realized',
+  'wasn\'t just', 'was more than', 'wasn\'t simply', 'was everything',
+  'the kind of', 'the sort of', 'the type of',
+  // Overused sentimental closures (AI loves neat endings)
+  'and for', 'in that moment', 'from that day', 'from that moment',
+  'after that day', 'the truest', 'the simplest', 'the greatest',
+  'more than enough', 'his whole world', 'her whole world', 'their whole world',
 ]);
 
 const AI_TRIGRAMS = new Set([
