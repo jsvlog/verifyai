@@ -161,7 +161,7 @@ async function detectCustom(text: string, config: DetectionConfig): Promise<Dete
 // ---- Signal 1: AI phrase markers (weight: 0.18) ----
 
 const AI_BIGRAMS = new Set([
-  // Overused by ChatGPT / Claude / Gemini
+  // Research-documented ChatGPT / Claude / Gemini overused bigrams
   'according to', 'a testament to', 'additionally the', 'align with the', 'an exploration of',
   'as a result', 'at the heart of', 'beyond the scope', 'can be attributed', 'can be seen as',
   'careful consideration', 'complex interplay', 'comprehensive overview', 'conclusion the',
@@ -190,9 +190,53 @@ const AI_BIGRAMS = new Set([
   'to summarize the', 'transformative potential', 'understanding the nuances',
   'underscores the importance', 'vast array of', 'when it comes to', 'while it is',
   'widely recognized as', 'with respect to',
+  // === EXPANDED: additional research-backed AI bigrams ===
+  // Hedging / uncertainty (AI overuses hedging for "balanced" tone)
+  'may be', 'could be', 'might be', 'appears to', 'seems to', 'tends to',
+  'likely to', 'often the', 'generally considered', 'typically involves',
+  'can be used', 'may include', 'could include', 'should be noted',
+  // Structured enumeration (AI loves numbered/structured flow)
+  'first and foremost', 'secondly the', 'thirdly the', 'lastly the',
+  'first of all', 'in summary the', 'to begin with', 'building upon',
+  // Overly formal transitions
+  'accordingly the', 'as previously mentioned', 'as discussed earlier',
+  'as noted above', 'as outlined below', 'as we have seen',
+  'based on the', 'based upon the', 'building on the', 'centered around',
+  'closely tied to', 'coupled with the', 'deeply rooted in', 'deeply intertwined',
+  'directly related to', 'drawing upon the', 'driven by the', 'embedded within',
+  'emerging from the', 'firmly established', 'frequently cited', 'fundamentally linked',
+  'growing body of', 'grounded in the', 'heavily influenced', 'highly relevant',
+  'in light of', 'in line with', 'in relation to', 'in response to',
+  'in support of', 'in the wake of', 'inextricably linked', 'inherently tied',
+  'integral part of', 'intimately connected', 'intrinsically linked', 'it follows that',
+  'key driver of', 'key factor in', 'largely due to', 'leading to the',
+  'longstanding debate', 'marked by the', 'merits further', 'must be considered',
+  'needs to be', 'notable example', 'notably the', 'of particular interest',
+  'ongoing debate', 'particularly noteworthy', 'pertinent to the', 'plays an important',
+  'predominantly focused', 'primary driver of', 'raises important', 'raises the question',
+  'remains a central', 'remains to be seen', 'rooted in the', 'serves to highlight',
+  'should be emphasized', 'significantly impacted', 'speaks to the', 'stemming from the',
+  'subject of ongoing', 'the broader context', 'the broader implications',
+  'the central role', 'the crucial role', 'the essential role', 'the fundamental',
+  'the growing importance', 'the increasing reliance', 'the key to understanding',
+  'the larger context', 'the primary focus', 'the role of the', 'the transformative power',
+  'there exists a', 'there is a growing', 'there is an increasing',
+  'this highlights the', 'this underscores the', 'tightly coupled', 'to better serve',
+  'ultimately leading', 'underscoring the need', 'well documented in',
+  'widely acknowledged', 'widely regarded', 'would be remiss',
+  // Claude-specific agreeable language
+  'i appreciate', 'great question', 'excellent question', 'thank you for',
+  'i understand your', 'that is a', 'absolutely right', 'you raise a',
+  'happy to help', 'let me know if', 'feel free to', 'i would be',
+  'please don\'t hesitate', 'more than happy', 'hope this helps',
+  // Overused "of the" constructions (AI loves this pattern)
+  'nature of the', 'scope of the', 'impact of the', 'role of the',
+  'context of the', 'essence of the', 'dynamics of the', 'implications of the',
+  'framework of the', 'trajectory of the', 'nuances of the', 'intricacies of the',
 ]);
 
 const AI_TRIGRAMS = new Set([
+  // Original
   'a wide range of', 'an essential component of', 'as a result of',
   'at the heart of this', 'can be found in', 'can be seen in',
   'cannot be overstated', 'delve into the fascinating', 'due to the fact that',
@@ -213,6 +257,38 @@ const AI_TRIGRAMS = new Set([
   'to address this challenge', 'to better understand the', 'to ensure that the',
   'to gain a deeper understanding', 'while there are some',
   'with the advent of', 'with the increasing use of',
+  // === EXPANDED: research-backed AI trigrams ===
+  // Hedging clusters
+  'it could be argued that', 'it may be the case', 'it seems that the',
+  'there is a possibility that', 'it is likely that', 'it appears that the',
+  'it can be argued that', 'there is evidence to suggest',
+  // Overly structured argumentation
+  'in addition to the', 'in conjunction with the', 'in light of the fact',
+  'in spite of the', 'in the context of a', 'in the process of the',
+  'in the wake of the', 'with regard to the', 'with respect to the',
+  'as well as the', 'along with the', 'together with the',
+  // AI's favorite narrative structures
+  'a number of factors', 'a variety of ways', 'all of these factors',
+  'an increasingly important role', 'are likely to be', 'at the same time',
+  'can be attributed to', 'continues to be a', 'continues to play a',
+  'for a variety of', 'has become increasingly important',
+  'has emerged as a', 'have been shown to', 'in a number of ways',
+  'in an increasingly interconnected', 'in an effort to', 'in order to achieve',
+  'is considered to be', 'is designed to provide', 'is expected to continue',
+  'is likely to result', 'is often referred to', 'is widely considered to',
+  'make a significant contribution', 'one of the key challenges',
+  'part of a broader', 'plays an essential role', 'plays an integral role',
+  'provide a comprehensive overview', 'provides a framework for',
+  'raise important questions about', 'represents a significant shift',
+  'serves as a reminder', 'the extent to which', 'the need for a',
+  'there is no doubt that', 'this is due to', 'this is especially true',
+  'to meet the needs', 'to meet the growing demand',
+  'understanding of the complex', 'will continue to play',
+  // Overly helpful/agreeable (Claude patterns)
+  'i would be happy to', 'please let me know if', 'i hope this helps',
+  'let me know if you', 'i understand your concern',
+  'that is a great question', 'you are absolutely right',
+  'i would recommend the', 'feel free to reach',
 ]);
 
 // ---- Signal 2: Human markers (weight: -0.12) ----
@@ -231,20 +307,25 @@ const HUMAN_CONTRACTIONS = new Set([
 
 const HUMAN_FILLERS = new Set([
   'actually', 'anyway', 'basically', 'honestly', 'literally', 'maybe',
-  'probably', 'seriously', 'totally', 'whatever',
+  'probably', 'seriously', 'totally', 'whatever', 'frankly', 'apparently',
+  'supposedly', 'definitely', 'obviously', 'surely', 'somehow',
+  'anyhow', 'anyways', 'alright', 'okay',
 ]);
 
 const HUMAN_CASUAL = new Set([
   'awesome', 'bummer', 'cool', 'crappy', 'crazy', 'creepy', 'dumb',
   'freaking', 'gross', 'heck', 'lame', 'meh', 'nuts', 'ok', 'ridiculous',
   'sucks', 'super', 'ugh', 'weird', 'yikes', 'yuck',
+  'dude', 'bro', 'crap', 'jerk', 'stoked', 'chill', 'wack', 'dope',
+  'sick', 'dang', 'shoot', 'frick', 'hell', 'damn', 'cringe',
+  'sketchy', 'shady', 'messed', 'busted',
 ]);
 
 // ---- Signal 3: Formal AI vocabulary (weight: 0.10) ----
 
 const AI_FORMAL_WORDS = new Set([
   'accordingly', 'aforementioned', 'aggregate', 'albeit', 'amidst',
-  'amongst', 'approximately', 'aforementioned', 'commence', 'commensurate',
+  'amongst', 'approximately', 'commence', 'commensurate',
   'consequently', 'consolidate', 'constitute', 'corroborate', 'culmination',
   'deemed', 'demonstrate', 'denote', 'depict', 'disseminate',
   'elucidate', 'embody', 'encompass', 'endeavor', 'ensuing',
@@ -261,9 +342,22 @@ const AI_FORMAL_WORDS = new Set([
   'therein', 'thereof', 'trajectory', 'transformative', 'ubiquitous',
   'underscore', 'undertake', 'unequivocally', 'utilize', 'validate',
   'vis-a-vis', 'whereby', 'wherein',
+  // === EXPANDED: AI-overused vocabulary (2-8x more in AI than human text) ===
+  'holistic', 'tailored', 'bespoke', 'curated', 'unpack', 'elevate',
+  'showcasing', 'reimagine', 'revolutionize', 'seamless', 'streamline',
+  'optimize', 'augment', 'harness', 'empower', 'frictionless',
+  'actionable', 'scalable', 'resilient', 'adaptive', 'intuitive',
+  'immersive', 'unprecedented', 'paradigm', 'ecosystem', 'nexus',
+  'convergence', 'interplay', 'dichotomy', 'epitomize',
+  'testament', 'embodiment', 'pinnacle',
+  'inevitable', 'indispensable', 'invaluable', 'vital', 'pivotal',
+  'cornerstone', 'linchpin', 'keystone', 'bedrock',
+  'galvanize', 'catalyze', 'propel', 'burgeoning',
+  'nascent', 'fledgling', 'incipient',
+  'unravel', 'delineate', 'explicate', 'encapsulate', 'contextualize',
+  'operationalize', 'conceptualize', 'ameliorate', 'mitigate',
+  'extrapolate', 'antithetical',
 ]);
-
-// ---- Signal weight configuration ----
 
 const SIGNAL_WEIGHTS = {
   aiPhrases: 0.40,       // n-gram AI markers — the most reliable signal
