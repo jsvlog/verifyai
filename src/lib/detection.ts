@@ -527,9 +527,14 @@ function computeDocSignals(
   // AI fiction overuses -ly adverbs (gently, softly, quietly, simply, etc.)
   let adverbCount = 0;
   for (const w of words) {
-    if (w.endsWith('ly') && w.length > 4) adverbCount++;
+    // Skip common non-adverb -ly words and everyday adverbs
+    if (w.endsWith('ly') && w.length > 4 &&
+        w !== 'early' && w !== 'daily' && w !== 'only' &&
+        w !== 'really' && w !== 'probably' && w !== 'actually') {
+      adverbCount++;
+    }
   }
-  const formalDensity = Math.min((formalCount + adverbCount * 0.5) / Math.max(tokens.length, 1) * 40, 1);
+  const formalDensity = Math.min((formalCount + adverbCount * 0.25) / Math.max(tokens.length, 1) * 40, 1);
 
   // --- Punctuation fingerprint ---
   const semicolons = (text.match(/;/g) || []).length;
