@@ -266,14 +266,14 @@ const AI_FORMAL_WORDS = new Set([
 // ---- Signal weight configuration ----
 
 const SIGNAL_WEIGHTS = {
-  aiPhrases: 0.18,       // n-gram AI markers
-  humanMarkers: 0.12,    // contractions, fillers, casual words (subtractive)
-  formalVocab: 0.10,     // academic/formal AI overused words
-  punctuation: 0.10,     // semicolons, em-dashes, balanced parens
-  burstiness: 0.20,      // sentence length variance — strongest signal
-  paragraphUniformity: 0.08, // uniform paragraphs = AI
-  passiveVoice: 0.07,    // passive constructions
-  lexicalDiversity: 0.15, // type-token ratio
+  aiPhrases: 0.25,       // n-gram AI markers (bumped)
+  humanMarkers: 0.10,    // contractions, fillers, casual words (reduced)
+  formalVocab: 0.13,     // academic/formal AI overused words (bumped)
+  punctuation: 0.08,     // semicolons, em-dashes, balanced parens
+  burstiness: 0.22,      // sentence length variance — strongest signal
+  paragraphUniformity: 0.06, // uniform paragraphs = AI
+  passiveVoice: 0.06,    // passive constructions
+  lexicalDiversity: 0.10, // type-token ratio (reduced — less discriminative)
 };
 
 // =====================================================================
