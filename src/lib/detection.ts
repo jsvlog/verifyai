@@ -309,6 +309,17 @@ const AI_TRIGRAMS = new Set([
   'let me know if you', 'i understand your concern',
   'that is a great question', 'you are absolutely right',
   'i would recommend the', 'feel free to reach',
+  // === AI fiction narrative trigrams ===
+  'she wasn\'t just', 'he wasn\'t just', 'wasn\'t just his', 'wasn\'t just her',
+  'was more than enough', 'his whole world', 'her whole world',
+  'laughing and crying at', 'the rainy afternoon when', 'reminded her that the',
+  'always remained close to', 'the ones who speak', 'the ones who quietly',
+  'show their love in', 'not the ones who', 'curled up beside',
+  'his tail wagging so', 'wagging so hard that', 'whenever she was smiling',
+  'he always wore whenever', 'the happy expression he', 'looked up at her',
+  'as if he understood', 'tilted his head as', 'seemed to brighten even',
+  'his cheerful personality seemed', 'would remember many things',
+  'one memory always remained', 'best friend was more',
 ]);
 
 // ---- Signal 2: Human markers (weight: -0.12) ----
