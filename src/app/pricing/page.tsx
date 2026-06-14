@@ -5,6 +5,7 @@ export const metadata: Metadata = { title: 'Pricing — VerifyAI' }
 
 const plans = [
   {
+    key: '2-Week',
     name: '2-Week Plan',
     price: '$9.99',
     originalPrice: '$19.99',
@@ -24,6 +25,7 @@ const plans = [
     ],
   },
   {
+    key: '4-Week',
     name: '4-Week Plan',
     price: '$14.99',
     originalPrice: '$29.99',
@@ -43,6 +45,7 @@ const plans = [
     ],
   },
   {
+    key: '12-Week',
     name: '12-Week Plan',
     price: '$29.99',
     originalPrice: '$59.99',
@@ -125,7 +128,7 @@ export default function PricingPage() {
               </ul>
 
               <a
-                href={`/api/checkout?plan=${encodeURIComponent(plan.name)}`}
+                href={`/api/checkout?plan=${encodeURIComponent(plan.key)}`}
                 className={`w-full text-center py-3 text-sm font-semibold rounded-xl transition-all inline-block ${
                   plan.popular
                     ? 'btn-primary'
