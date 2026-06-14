@@ -380,13 +380,13 @@ const AI_FORMAL_WORDS = new Set([
 ]);
 
 const SIGNAL_WEIGHTS = {
-  aiPhrases: 0.40,       // n-gram AI markers — the most reliable signal
-  humanMarkers: 0.05,    // contractions, fillers, casual words (subtractive)
+  aiPhrases: 0.45,       // n-gram AI markers — the most reliable signal
+  humanMarkers: 0.03,    // contractions, fillers, casual words (subtractive)
   formalVocab: 0.18,     // academic/formal AI overused words
   punctuation: 0.04,     // semicolons, em-dashes
-  burstiness: 0.12,      // sentence length variance
+  burstiness: 0.10,      // sentence length variance
   paragraphUniformity: 0.02, // uniform paragraphs
-  passiveVoice: 0.04,    // passive constructions
+  passiveVoice: 0.03,    // passive constructions
   lexicalDiversity: 0.15, // type-token ratio
 };
 
