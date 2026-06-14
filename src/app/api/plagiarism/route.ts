@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkPlagiarism } from '@/lib/detection'
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { checkScanLimit } from '@/lib/scan-limits'
 
 const adminClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,10 +21,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Text exceeds limit.', requestId: genId() }, { status: 400 })
     }
 
-    const result = await checkPlagiarism(text.trim())
-
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
+
+    if (user) {
+      const limit = await checkScanLimit(user.id)
+      if (!limit.allowed) {
+        return NextResponse.json({
+          success: false,
+          error: `Free tier limit reached (${limit.used}/${limit.limit} scans this week). Upgrade to continue.`,
+          requestId: genId(),
+          code: 'SCAN_LIMIT_REACHED',
+        }, { status: 429 })
+      }
+    }
+
+    const result = await checkPlagiarism(text.trim())
+
     if (user) {
       await adminClient.from('scans').insert({
         user_id: user.id, type: 'plagiarism', input_text: text.trim(),
@@ -33,6 +47,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: result, requestId: genId() })
   } catch (error) {
+    console.error('Plagiarism API error:', error)
     return NextResponse.json({ success: false, error: 'Internal error', requestId: genId() }, { status: 500 })
   }
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 interface NavLink {
   label: string;
@@ -30,7 +31,22 @@ export default function Navbar() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      setUser(u);
+    };
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -92,19 +108,36 @@ export default function Navbar() {
                 )}
               </div>
             ))}
+            {/* Pricing link */}
+            <Link href="/pricing" className={`px-3 py-2 text-sm font-medium rounded-xl transition-colors ${isActive('/pricing') ? 'text-[#3d3227] bg-[#fff8ec]' : 'text-[#8c7a64] hover:text-[#3d3227] hover:bg-[#fff8ec]'}`}>
+              Pricing
+            </Link>
           </nav>
 
           {/* Actions */}
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/login" className="px-4 py-2 text-sm font-medium text-[#8c7a64] hover:text-[#3d3227] rounded-xl hover:bg-[#fff8ec] transition-colors">
-              Sign in
-            </Link>
-            <Link href="/login?signup=true" className="btn-primary text-sm !py-2.5 !px-5">
-              Get started
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </Link>
+            {user ? (
+              <>
+                <Link href="/dashboard" className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors ${isActive('/dashboard') ? 'text-[#3d3227] bg-[#fff8ec]' : 'text-[#8c7a64] hover:text-[#3d3227] hover:bg-[#fff8ec]'}`}>
+                  Dashboard
+                </Link>
+                <Link href="/account" className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors ${isActive('/account') ? 'text-[#3d3227] bg-[#fff8ec]' : 'text-[#8c7a64] hover:text-[#3d3227] hover:bg-[#fff8ec]'}`}>
+                  Account
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="px-4 py-2 text-sm font-medium text-[#8c7a64] hover:text-[#3d3227] rounded-xl hover:bg-[#fff8ec] transition-colors">
+                  Sign in
+                </Link>
+                <Link href="/login?signup=true" className="btn-primary text-sm !py-2.5 !px-5">
+                  Get started
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile */}
@@ -131,9 +164,19 @@ export default function Navbar() {
                 )}
               </div>
             ))}
+            <Link href="/pricing" className="block py-2.5 text-sm font-medium text-[#8c7a64]" onClick={() => setMobileOpen(false)}>Pricing</Link>
             <div className="pt-4 mt-2 border-t border-[#f5e6cc] space-y-2">
-              <Link href="/login" className="block w-full text-center py-2.5 text-sm font-medium border border-[#f5e6cc] text-[#3d3227] rounded-xl">Sign in</Link>
-              <Link href="/login?signup=true" className="block w-full text-center py-2.5 text-sm font-semibold bg-gradient-to-r from-[#ff6b6b] to-[#ffa94d] text-white rounded-xl shadow-md">Get started</Link>
+              {user ? (
+                <>
+                  <Link href="/dashboard" className="block w-full text-center py-2.5 text-sm font-medium border border-[#f5e6cc] text-[#3d3227] rounded-xl">Dashboard</Link>
+                  <Link href="/account" className="block w-full text-center py-2.5 text-sm font-medium text-[#8c7a64] border border-[#f5e6cc] rounded-xl">Account</Link>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="block w-full text-center py-2.5 text-sm font-medium border border-[#f5e6cc] text-[#3d3227] rounded-xl">Sign in</Link>
+                  <Link href="/login?signup=true" className="block w-full text-center py-2.5 text-sm font-semibold bg-gradient-to-r from-[#ff6b6b] to-[#ffa94d] text-white rounded-xl shadow-md">Get started</Link>
+                </>
+              )}
             </div>
           </div>
         </div>

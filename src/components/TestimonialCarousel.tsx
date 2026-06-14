@@ -11,7 +11,6 @@ export default function TestimonialCarousel() {
     setCurrent(index);
   }, []);
 
-  // Auto-advance
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrent((prev) => (prev + 1) % total);
@@ -22,21 +21,21 @@ export default function TestimonialCarousel() {
   const t = testimonials[current];
 
   return (
-    <div className="w-full animate-fade-in">
-      <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-100 shadow-sm p-5 min-h-[120px]">
+    <div className="w-full max-w-lg animate-fade-in">
+      <div className="bg-white rounded-2xl border border-[#f5e6cc] shadow-lg p-6 min-h-[140px]">
         {/* Header */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-sm shadow-md">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff6b6b] to-[#ffa94d] flex items-center justify-center text-white font-semibold text-sm shadow-md">
             {t.initials}
           </div>
           <div>
-            <div className="text-sm font-semibold text-slate-800">{t.name}</div>
+            <div className="text-sm font-semibold text-[#3d3227]">{t.name}</div>
             <div className="flex items-center gap-1.5">
               <div className="flex">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <svg
                     key={i}
-                    className={`w-3 h-3 ${i < t.rating ? 'text-amber-400' : 'text-slate-200'}`}
+                    className={`w-3 h-3 ${i < t.rating ? 'text-[#fab005]' : 'text-[#f5e6cc]'}`}
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -44,26 +43,26 @@ export default function TestimonialCarousel() {
                   </svg>
                 ))}
               </div>
-              <span className="text-xs text-slate-400">{t.date}</span>
+              <span className="text-xs text-[#b8a88e]">{t.date}</span>
             </div>
           </div>
         </div>
 
         {/* Quote */}
-        <p className="text-sm text-slate-600 leading-relaxed italic">
+        <p className="text-sm text-[#8c7a64] leading-relaxed italic">
           &ldquo;{t.text}&rdquo;
         </p>
 
         {/* Dots */}
-        <div className="flex justify-center gap-1.5 mt-3">
+        <div className="flex justify-center gap-1.5 mt-4">
           {testimonials.map((_, i) => (
             <button
               key={i}
               onClick={() => goTo(i)}
               className={`h-1.5 rounded-full transition-all ${
                 i === current
-                  ? 'w-5 bg-gradient-to-r from-teal-500 to-indigo-500'
-                  : 'w-1.5 bg-slate-200 hover:bg-slate-300'
+                  ? 'w-5 bg-gradient-to-r from-[#ff6b6b] to-[#ffa94d]'
+                  : 'w-1.5 bg-[#f5e6cc] hover:bg-[#e0cfb0]'
               }`}
             />
           ))}
