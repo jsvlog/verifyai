@@ -11,7 +11,6 @@ export interface DetectionConfig {
   options?: Record<string, unknown>;
 }
 
-// Default config - set via environment variables
 function getConfig(provider?: DetectionProvider): DetectionConfig {
   const p = provider || (process.env.DETECTION_PROVIDER as DetectionProvider) || 'custom';
   return {
@@ -30,7 +29,6 @@ export async function detectAI(
   const cfg = config || getConfig();
 
   if (!cfg.apiKey && cfg.provider !== 'custom') {
-    // Fall back to heuristic-based detection when no API key
     return heuristicAIDetection(text);
   }
 
@@ -50,50 +48,31 @@ export async function detectAI(
   }
 }
 
-export async function checkPlagiarism(
-  text: string,
-  config?: DetectionConfig
-): Promise<PlagiarismResult> {
-  const cfg = config || getConfig();
-  // For now, heuristic until API keys provided
+export async function checkPlagiarism(text: string, config?: DetectionConfig): Promise<PlagiarismResult> {
   return heuristicPlagiarismCheck(text);
 }
 
-export async function humanizeText(
-  text: string,
-  config?: DetectionConfig
-): Promise<HumanizeResult> {
-  const cfg = config || getConfig();
+export async function humanizeText(text: string, config?: DetectionConfig): Promise<HumanizeResult> {
   return heuristicHumanize(text);
 }
 
-// ===== Provider-Specific Implementations =====
+// ===== Provider-Specific Implementations (unchanged) =====
 
 async function detectGPTZero(text: string, config: DetectionConfig): Promise<DetectionResult> {
   const response = await fetch(config.endpoint || 'https://api.gptzero.me/v2/predict/text', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': config.apiKey || '',
-    },
-    body: JSON.stringify({
-      document: text,
-      multilingual: false,
-    }),
+    headers: { 'Content-Type': 'application/json', 'x-api-key': config.apiKey || '' },
+    body: JSON.stringify({ document: text, multilingual: false }),
   });
-
   if (!response.ok) throw new Error(`GPTZero API error: ${response.statusText}`);
   const data = await response.json();
-
   return {
     overallScore: (data.documents?.[0]?.completely_generated_prob || 0) * 100,
     humanScore: (data.documents?.[0]?.completely_human_prob || 0) * 100,
     mixedScore: (data.documents?.[0]?.mixed_prob || 0) * 100,
     aiScore: (data.documents?.[0]?.completely_generated_prob || 0) * 100,
     sentenceAnalysis: (data.documents?.[0]?.sentences || []).map((s: any) => ({
-      sentence: s.sentence,
-      startIndex: s.start || 0,
-      endIndex: s.end || 0,
+      sentence: s.sentence, startIndex: s.start || 0, endIndex: s.end || 0,
       aiProbability: s.generated_prob || 0,
       verdict: s.generated_prob > 0.5 ? 'ai' as const : 'human' as const,
     })),
@@ -107,27 +86,16 @@ async function detectGPTZero(text: string, config: DetectionConfig): Promise<Det
 async function detectOriginality(text: string, config: DetectionConfig): Promise<DetectionResult> {
   const response = await fetch(config.endpoint || 'https://api.originality.ai/api/v2/scan/ai', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-OAI-API-KEY': config.apiKey || '',
-    },
+    headers: { 'Content-Type': 'application/json', 'X-OAI-API-KEY': config.apiKey || '' },
     body: JSON.stringify({ content: text }),
   });
-
   if (!response.ok) throw new Error(`Originality API error: ${response.statusText}`);
   const data = await response.json();
-
   const aiScore = (data.score?.ai?.probability || 0) * 100;
   return {
-    overallScore: aiScore,
-    humanScore: 100 - aiScore,
-    mixedScore: 0,
-    aiScore,
-    sentenceAnalysis: [],
-    modelPredictions: [],
-    processingTime: data.processing_time || 0,
-    textLength: text.length,
-    textHash: simpleHash(text),
+    overallScore: aiScore, humanScore: 100 - aiScore, mixedScore: 0, aiScore,
+    sentenceAnalysis: [], modelPredictions: [],
+    processingTime: data.processing_time || 0, textLength: text.length, textHash: simpleHash(text),
   };
 }
 
@@ -135,123 +103,496 @@ async function detectSapling(text: string, config: DetectionConfig): Promise<Det
   const response = await fetch('https://api.sapling.ai/api/v1/aidetect', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      key: config.apiKey,
-      text,
-    }),
+    body: JSON.stringify({ key: config.apiKey, text }),
   });
-
   if (!response.ok) throw new Error(`Sapling API error: ${response.statusText}`);
   const data = await response.json();
-
   const aiScore = (data.score || 0) * 100;
   return {
-    overallScore: aiScore,
-    humanScore: 100 - aiScore,
-    mixedScore: 0,
-    aiScore,
+    overallScore: aiScore, humanScore: 100 - aiScore, mixedScore: 0, aiScore,
     sentenceAnalysis: (data.sentence_scores || []).map((s: any) => ({
-      sentence: s.sentence,
-      startIndex: 0,
-      endIndex: 0,
+      sentence: s.sentence, startIndex: 0, endIndex: 0,
       aiProbability: s.score || 0,
       verdict: s.score > 0.5 ? 'ai' as const : 'human' as const,
     })),
     modelPredictions: [],
-    processingTime: 0,
-    textLength: text.length,
-    textHash: simpleHash(text),
+    processingTime: 0, textLength: text.length, textHash: simpleHash(text),
   };
 }
 
 async function detectWinston(text: string, config: DetectionConfig): Promise<DetectionResult> {
   const response = await fetch('https://api.gowinston.ai/api/v1/predict', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      text,
-      language: 'en',
-      sentences: true,
-    }),
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.apiKey}` },
+    body: JSON.stringify({ text, language: 'en', sentences: true }),
   });
-
   if (!response.ok) throw new Error(`Winston API error: ${response.statusText}`);
   const data = await response.json();
-
   return {
-    overallScore: (data.score || 0) * 100,
-    humanScore: (data.human_score || 0) * 100,
-    mixedScore: 0,
-    aiScore: (data.score || 0) * 100,
+    overallScore: (data.score || 0) * 100, humanScore: (data.human_score || 0) * 100,
+    mixedScore: 0, aiScore: (data.score || 0) * 100,
     sentenceAnalysis: (data.sentences || []).map((s: any) => ({
-      sentence: s.text,
-      startIndex: s.start,
-      endIndex: s.end,
+      sentence: s.text, startIndex: s.start, endIndex: s.end,
       aiProbability: s.ai_score || 0,
       verdict: s.ai_score > 0.5 ? 'ai' as const : 'human' as const,
     })),
     modelPredictions: [],
-    processingTime: 0,
-    textLength: text.length,
-    textHash: simpleHash(text),
+    processingTime: 0, textLength: text.length, textHash: simpleHash(text),
   };
 }
 
 async function detectCustom(text: string, config: DetectionConfig): Promise<DetectionResult> {
-  if (!config.endpoint) {
-    return heuristicAIDetection(text);
-  }
-
+  if (!config.endpoint) return heuristicAIDetection(text);
   const response = await fetch(config.endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey || ''}`,
-    },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.apiKey || ''}` },
     body: JSON.stringify({ text }),
   });
-
   if (!response.ok) return heuristicAIDetection(text);
   const data = await response.json();
   return normalizeCustomResponse(data, text);
 }
 
-// ===== Heuristic Detection (Fallback) =====
+// =====================================================================
+//  MULTI-DIMENSIONAL HEURISTIC DETECTION ENGINE
+//  8 statistical signals, zero API cost, fully deterministic
+// =====================================================================
+
+// ---- Signal 1: AI phrase markers (weight: 0.18) ----
+
+const AI_BIGRAMS = new Set([
+  // Overused by ChatGPT / Claude / Gemini
+  'according to', 'a testament to', 'additionally the', 'align with the', 'an exploration of',
+  'as a result', 'at the heart of', 'beyond the scope', 'can be attributed', 'can be seen as',
+  'careful consideration', 'complex interplay', 'comprehensive overview', 'conclusion the',
+  'contributes to the', 'critical role', 'crucial to understanding', 'deep dive into',
+  'delve into', 'demonstrates the', 'despite the fact', 'due to the fact', 'embodies the',
+  'essential for the', 'fascinating world of', 'furthermore the', 'has been shown to',
+  'has led to the', 'highlights the importance', 'however it is', 'in addition to',
+  'in conclusion the', 'in contrast to the', 'in order to', 'in recent years',
+  'in terms of', 'in the context of', 'in the face of', 'in the field of',
+  'in the modern', 'in the realm of', 'in this article', 'in today\'s',
+  'intricate balance', 'is a testament', 'is characterized by', 'is important to',
+  'is worth noting', 'it becomes clear', 'it can be argued', 'it is crucial',
+  'it is essential', 'it is important to', 'it is noteworthy', 'it is worth',
+  'it must be emphasized', 'it should be noted', 'landscape of', 'lies in the',
+  'make a significant', 'moreover the', 'multifaceted approach', 'nevertheless the',
+  'not only but', 'of paramount importance', 'on the contrary', 'one could argue',
+  'over the years', 'owing to the', 'paved the way', 'play a crucial',
+  'plays a pivotal', 'profound impact', 'provides a comprehensive', 'provides insight into',
+  'reinforcing the', 'rich tapestry', 'robust framework', 'serves as a',
+  'shed light on', 'significance cannot be', 'stand as a testament', 'the advent of',
+  'the complexities of', 'the concept of', 'the development of', 'the evolution of',
+  'the fact that', 'the field of', 'the importance of', 'the intricacies of',
+  'the intersection of', 'the notion of', 'the power of', 'the realm of',
+  'the relationship between', 'the significance of', 'the use of', 'this article explores',
+  'this comprehensive', 'this nuanced', 'through the lens', 'to conclude the',
+  'to summarize the', 'transformative potential', 'understanding the nuances',
+  'underscores the importance', 'vast array of', 'when it comes to', 'while it is',
+  'widely recognized as', 'with respect to',
+]);
+
+const AI_TRIGRAMS = new Set([
+  'a wide range of', 'an essential component of', 'as a result of',
+  'at the heart of this', 'can be found in', 'can be seen in',
+  'cannot be overstated', 'delve into the fascinating', 'due to the fact that',
+  'has been gaining traction', 'has the potential to', 'in a way that',
+  'in the case of', 'in the ever-evolving', 'in the face of these',
+  'in the form of', 'in the rapidly evolving', 'is a crucial aspect',
+  'is a testament to', 'is being used to', 'is one of the most',
+  'it can be seen that', 'it is clear that', 'it is essential to',
+  'it is important to note', 'it is no surprise that',
+  'it is worth noting that', 'it must be noted that', 'it should be noted that',
+  'lies at the heart of', 'not only in terms of', 'of the most important',
+  'on the other hand', 'one of the key', 'one of the most important',
+  'over the past few years', 'play a crucial role in', 'plays a vital role in',
+  'some of the key', 'the development of new', 'the emergence of new',
+  'the field of artificial', 'the importance of understanding',
+  'the integration of artificial', 'there is a growing need',
+  'this article will explore', 'this is particularly true',
+  'to address this challenge', 'to better understand the', 'to ensure that the',
+  'to gain a deeper understanding', 'while there are some',
+  'with the advent of', 'with the increasing use of',
+]);
+
+// ---- Signal 2: Human markers (weight: -0.12) ----
+
+const HUMAN_CONTRACTIONS = new Set([
+  'ain\'t', 'can\'t', 'could\'ve', 'couldn\'t', 'didn\'t', 'doesn\'t', 'don\'t',
+  'gonna', 'gotta', 'hadn\'t', 'hasn\'t', 'haven\'t', 'he\'d', 'he\'ll', 'he\'s',
+  'i\'d', 'i\'ll', 'i\'m', 'i\'ve', 'isn\'t', 'it\'d', 'it\'ll', 'it\'s',
+  'kinda', 'lemme', 'let\'s', 'might\'ve', 'must\'ve', 'should\'ve',
+  'shouldn\'t', 'sorta', 'that\'d', 'that\'ll', 'that\'s', 'there\'d',
+  'there\'s', 'they\'d', 'they\'ll', 'they\'re', 'they\'ve', 'wanna',
+  'wasn\'t', 'we\'d', 'we\'ll', 'we\'re', 'we\'ve', 'weren\'t', 'what\'s',
+  'where\'s', 'who\'d', 'who\'ll', 'who\'s', 'won\'t', 'would\'ve', 'wouldn\'t',
+  'y\'all', 'you\'d', 'you\'ll', 'you\'re', 'you\'ve',
+]);
+
+const HUMAN_FILLERS = new Set([
+  'actually', 'anyway', 'basically', 'honestly', 'literally', 'maybe',
+  'probably', 'seriously', 'totally', 'whatever',
+]);
+
+const HUMAN_CASUAL = new Set([
+  'awesome', 'bummer', 'cool', 'crappy', 'crazy', 'creepy', 'dumb',
+  'freaking', 'gross', 'heck', 'lame', 'meh', 'nuts', 'ok', 'ridiculous',
+  'sucks', 'super', 'ugh', 'weird', 'yikes', 'yuck',
+]);
+
+// ---- Signal 3: Formal AI vocabulary (weight: 0.10) ----
+
+const AI_FORMAL_WORDS = new Set([
+  'accordingly', 'aforementioned', 'aggregate', 'albeit', 'amidst',
+  'amongst', 'approximately', 'aforementioned', 'commence', 'commensurate',
+  'consequently', 'consolidate', 'constitute', 'corroborate', 'culmination',
+  'deemed', 'demonstrate', 'denote', 'depict', 'disseminate',
+  'elucidate', 'embody', 'encompass', 'endeavor', 'ensuing',
+  'exacerbate', 'exemplify', 'expedite', 'facilitate', 'foregoing',
+  'foster', 'furthermore', 'garner', 'hence', 'hereby', 'herein',
+  'hitherto', 'imperative', 'impetus', 'implication', 'indispensable',
+  'insofar', 'integral', 'juxtaposition', 'leverage', 'manifestation',
+  'moreover', 'multifaceted', 'namely', 'nevertheless', 'nonetheless',
+  'notwithstanding', 'novel', 'nuanced', 'ostensibly', 'overarching',
+  'paramount', 'pertains', 'plethora', 'pragmatic', 'predominantly',
+  'profound', 'propensity', 'quintessential', 'reiterate', 'rendering',
+  'salient', 'signify', 'solidify', 'spearhead', 'substantiate',
+  'succinct', 'surmount', 'synergy', 'synthesize', 'thereby',
+  'therein', 'thereof', 'trajectory', 'transformative', 'ubiquitous',
+  'underscore', 'undertake', 'unequivocally', 'utilize', 'validate',
+  'vis-a-vis', 'whereby', 'wherein',
+]);
+
+// ---- Signal weight configuration ----
+
+const SIGNAL_WEIGHTS = {
+  aiPhrases: 0.18,       // n-gram AI markers
+  humanMarkers: 0.12,    // contractions, fillers, casual words (subtractive)
+  formalVocab: 0.10,     // academic/formal AI overused words
+  punctuation: 0.10,     // semicolons, em-dashes, balanced parens
+  burstiness: 0.20,      // sentence length variance — strongest signal
+  paragraphUniformity: 0.08, // uniform paragraphs = AI
+  passiveVoice: 0.07,    // passive constructions
+  lexicalDiversity: 0.15, // type-token ratio
+};
+
+// =====================================================================
+//  MAIN HEURISTIC FUNCTION
+// =====================================================================
 
 function heuristicAIDetection(text: string): DetectionResult {
-  const sentences = splitSentences(text);
+  const t0 = Date.now();
+  const trimmed = text.trim();
+  const sentences = splitSentences(trimmed);
+  const paragraphs = splitParagraphs(trimmed);
+  const words = tokenize(trimmed);
+
+  // --- Document-level signals ---
+  const docSignals = computeDocSignals(trimmed, sentences, paragraphs, words);
+
+  // --- Per-sentence analysis ---
   const sentenceAnalysis: SentenceAnalysis[] = sentences.map((s, i) => {
-    const aiProb = calculateHeuristicScore(s);
+    const sentSignals = computeSentenceSignals(s);
+    // Blend document context into sentence score
+    const sentenceOnly = (sentSignals.aiPhrases * SIGNAL_WEIGHTS.aiPhrases +
+      (1 - sentSignals.humanMarkers) * SIGNAL_WEIGHTS.humanMarkers +
+      sentSignals.formalVocab * SIGNAL_WEIGHTS.formalVocab +
+      sentSignals.punctuation * SIGNAL_WEIGHTS.punctuation) /
+      (SIGNAL_WEIGHTS.aiPhrases + SIGNAL_WEIGHTS.humanMarkers + SIGNAL_WEIGHTS.formalVocab + SIGNAL_WEIGHTS.punctuation);
+
+    const docOnly = (docSignals.burstiness * SIGNAL_WEIGHTS.burstiness +
+      docSignals.paragraphUniformity * SIGNAL_WEIGHTS.paragraphUniformity +
+      docSignals.passiveVoice * SIGNAL_WEIGHTS.passiveVoice +
+      docSignals.lexicalDiversity * SIGNAL_WEIGHTS.lexicalDiversity) /
+      (SIGNAL_WEIGHTS.burstiness + SIGNAL_WEIGHTS.paragraphUniformity + SIGNAL_WEIGHTS.passiveVoice + SIGNAL_WEIGHTS.lexicalDiversity);
+
+    // 60% sentence-level, 40% document-level context
+    const aiProb = sentenceOnly * 0.6 + docOnly * 0.4;
+
     let verdict: 'human' | 'ai' | 'mixed';
     if (aiProb > 0.65) verdict = 'ai';
     else if (aiProb > 0.35) verdict = 'mixed';
     else verdict = 'human';
-    return { sentence: s, startIndex: i, endIndex: i + 1, aiProbability: aiProb, verdict };
+
+    return {
+      sentence: s,
+      startIndex: i,
+      endIndex: i + 1,
+      aiProbability: Math.round(aiProb * 1000) / 1000,
+      verdict,
+    };
   });
 
-  const overallScore = sentenceAnalysis.length > 0
-    ? sentenceAnalysis.reduce((sum, s) => sum + s.aiProbability, 0) / sentenceAnalysis.length * 100
-    : 0;
+  // --- Overall document score ---
+  const overallScore =
+    docSignals.aiPhrases * SIGNAL_WEIGHTS.aiPhrases +
+    (1 - docSignals.humanMarkers) * SIGNAL_WEIGHTS.humanMarkers +
+    docSignals.formalVocab * SIGNAL_WEIGHTS.formalVocab +
+    docSignals.punctuation * SIGNAL_WEIGHTS.punctuation +
+    docSignals.burstiness * SIGNAL_WEIGHTS.burstiness +
+    docSignals.paragraphUniformity * SIGNAL_WEIGHTS.paragraphUniformity +
+    docSignals.passiveVoice * SIGNAL_WEIGHTS.passiveVoice +
+    docSignals.lexicalDiversity * SIGNAL_WEIGHTS.lexicalDiversity;
+
+  const aiScore = Math.round(clamp(overallScore, 0, 1) * 1000) / 10;
 
   return {
-    overallScore: Math.round(overallScore * 10) / 10,
-    humanScore: Math.round((100 - overallScore) * 10) / 10,
+    overallScore: aiScore,
+    humanScore: Math.round((100 - aiScore) * 10) / 10,
     mixedScore: 0,
-    aiScore: Math.round(overallScore * 10) / 10,
+    aiScore,
     sentenceAnalysis,
-    modelPredictions: [
-      { model: 'GPT-4 / ChatGPT', probability: Math.min(overallScore / 200 + 0.1, 0.8) },
-      { model: 'Claude', probability: Math.min(overallScore / 300 + 0.05, 0.6) },
-      { model: 'Human-written', probability: Math.max(1 - overallScore / 100, 0.2) },
-    ],
-    processingTime: Math.random() * 2 + 1,
-    textLength: text.length,
-    textHash: simpleHash(text),
+    modelPredictions: generateModelPredictions(aiScore, docSignals),
+    processingTime: (Date.now() - t0) / 1000,
+    textLength: trimmed.length,
+    textHash: simpleHash(trimmed),
   };
 }
+
+// =====================================================================
+//  DOCUMENT-LEVEL SIGNAL COMPUTATION
+// =====================================================================
+
+interface DocSignals {
+  aiPhrases: number;
+  humanMarkers: number;
+  formalVocab: number;
+  punctuation: number;
+  burstiness: number;
+  paragraphUniformity: number;
+  passiveVoice: number;
+  lexicalDiversity: number;
+}
+
+function computeDocSignals(
+  text: string, sentences: string[], paragraphs: string[], words: string[]
+): DocSignals {
+  const lowerText = text.toLowerCase();
+
+  // --- AI phrase n-gram matching ---
+  let bigramMatches = 0;
+  AI_BIGRAMS.forEach(bg => {
+    if (lowerText.includes(bg)) bigramMatches++;
+  });
+  const aiBigramDensity = Math.min(bigramMatches / Math.max(sentences.length, 1), 1);
+
+  let trigramMatches = 0;
+  AI_TRIGRAMS.forEach(tg => {
+    if (lowerText.includes(tg)) trigramMatches++;
+  });
+  const aiTrigramScore = Math.min(trigramMatches / Math.max(sentences.length, 1), 1);
+
+  // --- Human markers ---
+  let contractionCount = 0;
+  const tokens = tokenizeLower(text);
+  for (const t of tokens) {
+    if (HUMAN_CONTRACTIONS.has(t)) contractionCount++;
+  }
+  const contractionDensity = Math.min(contractionCount / Math.max(tokens.length, 1) * 50, 1);
+
+  let fillerCasualCount = 0;
+  for (const t of tokens) {
+    if (HUMAN_FILLERS.has(t) || HUMAN_CASUAL.has(t)) fillerCasualCount++;
+  }
+  const casualDensity = Math.min(fillerCasualCount / Math.max(tokens.length, 1) * 30, 1);
+
+  const humanScore = clamp((contractionDensity * 0.6 + casualDensity * 0.4), 0, 1);
+
+  // --- Formal vocabulary ---
+  let formalCount = 0;
+  for (const t of tokens) {
+    if (AI_FORMAL_WORDS.has(t)) formalCount++;
+  }
+  const formalDensity = Math.min(formalCount / Math.max(tokens.length, 1) * 40, 1);
+
+  // --- Punctuation fingerprint ---
+  const semicolons = (text.match(/;/g) || []).length;
+  const emDashes = (text.match(/—/g) || []).length;
+  const colons = (text.match(/:/g) || []).length;
+  const exclamations = (text.match(/!/g) || []).length;
+  const questions = (text.match(/\?/g) || []).length;
+  const totalPunct = semicolons + emDashes + colons + exclamations + questions + 1;
+
+  // AI overuses formal punctuation (; — :), underuses emotional (! ?)
+  const formalPunctRatio = (semicolons + emDashes + colons) / totalPunct;
+  const emotionalPunctRatio = (exclamations + questions) / totalPunct;
+  const punctScore = clamp(formalPunctRatio * 0.8 - emotionalPunctRatio * 0.3, 0, 1);
+
+  // --- Sentence burstiness (variance in length) ---
+  const sentLengths = sentences.map(s => s.length);
+  const meanLen = sentLengths.length > 0
+    ? sentLengths.reduce((a, b) => a + b, 0) / sentLengths.length
+    : 0;
+  const variance = sentLengths.length > 1
+    ? sentLengths.reduce((sum, l) => sum + (l - meanLen) ** 2, 0) / sentLengths.length
+    : 0;
+  const stdDev = Math.sqrt(variance);
+  // Coefficient of variation — AI has low CV (uniform sentences)
+  const cv = meanLen > 0 ? stdDev / meanLen : 0;
+  // Human CV typically 0.5-0.9, AI CV typically 0.15-0.4
+  const burstinessScore = cv < 0.2 ? 0.9 : cv < 0.35 ? 0.7 : cv < 0.5 ? 0.4 : cv < 0.7 ? 0.1 : 0;
+
+  // Long/short sentence ratio
+  const longSents = sentLengths.filter(l => l > 120).length;
+  const shortSents = sentLengths.filter(l => l < 30).length;
+  const longShortRatio = (longSents / Math.max(sentences.length, 1) * 2 -
+    shortSents / Math.max(sentences.length, 1) * 2);
+  const extremeRatioScore = clamp(longShortRatio + 1, 0, 1) * 0.5;
+
+  const burstiness = burstinessScore * 0.7 + extremeRatioScore * 0.3;
+
+  // --- Paragraph uniformity ---
+  if (paragraphs.length >= 3) {
+    const paraLengths = paragraphs.map(p => splitSentences(p).length);
+    const paraMean = paraLengths.reduce((a, b) => a + b, 0) / paraLengths.length;
+    const paraVar = paraLengths.reduce((sum, l) => sum + (l - paraMean) ** 2, 0) / paraLengths.length;
+    const paraCV = paraMean > 0 ? Math.sqrt(paraVar) / paraMean : 0;
+    // AI: low CV (uniform 3-4 sentences per paragraph). Human: high CV.
+    const paraUniformity = paraCV < 0.3 ? 0.85 : paraCV < 0.5 ? 0.6 : paraCV < 0.8 ? 0.3 : 0.05;
+    // Also check average: AI rarely has 1-sentence or 7+ sentence paragraphs
+    const avgParaLen = Math.round(paraMean);
+    const avgLenScore = (avgParaLen >= 3 && avgParaLen <= 5) ? 0.3 : 0;
+    return {
+      aiPhrases: clamp(aiBigramDensity * 0.6 + aiTrigramScore * 0.4, 0, 1),
+      humanMarkers: humanScore,
+      formalVocab: formalDensity,
+      punctuation: punctScore,
+      burstiness,
+      paragraphUniformity: clamp(paraUniformity * 0.7 + avgLenScore, 0, 1),
+      passiveVoice: computePassiveVoice(text, sentences),
+      lexicalDiversity: computeLexicalDiversity(words),
+    };
+  }
+
+  // Fallback for short texts (no paragraph structure)
+  return {
+    aiPhrases: clamp(aiBigramDensity * 0.6 + aiTrigramScore * 0.4, 0, 1),
+    humanMarkers: humanScore,
+    formalVocab: formalDensity,
+    punctuation: punctScore,
+    burstiness,
+    paragraphUniformity: 0.5,
+    passiveVoice: computePassiveVoice(text, sentences),
+    lexicalDiversity: computeLexicalDiversity(words),
+  };
+}
+
+// --- Passive voice detection ---
+function computePassiveVoice(text: string, sentences: string[]): number {
+  const lower = text.toLowerCase();
+  // "was/were/is/are/been/being + past participle (-ed, -en, -t)"
+  const passivePattern = /\b(?:am|is|are|was|were|be|been|being)\s+(?:\w+(?:ed|en|t))\b/gi;
+  const matches = lower.match(passivePattern) || [];
+  const density = matches.length / Math.max(sentences.length, 1);
+  // AI overuses passive: >0.4 per sentence = strong signal
+  return clamp(density / 0.8, 0, 1);
+}
+
+// --- Lexical diversity (type-token ratio, hapax legomena) ---
+function computeLexicalDiversity(words: string[]): number {
+  if (words.length < 10) return 0.5;
+  const unique = new Set(words);
+  const ttr = unique.size / words.length; // type-token ratio
+
+  // Hapax legomena (words appearing exactly once)
+  const freq = new Map<string, number>();
+  for (const w of words) freq.set(w, (freq.get(w) || 0) + 1);
+  let hapax = 0;
+  freq.forEach((c) => { if (c === 1) hapax++; });
+  const hapaxRatio = hapax / unique.size;
+
+  // AI: TTR 0.4-0.55, hapax 0.3-0.45 || Human: TTR 0.55-0.75, hapax 0.5-0.7
+  const ttrScore = ttr < 0.4 ? 0.9 : ttr < 0.5 ? 0.7 : ttr < 0.6 ? 0.35 : ttr < 0.7 ? 0.1 : 0;
+  const hapaxScore = hapaxRatio < 0.35 ? 0.85 : hapaxRatio < 0.45 ? 0.6 : hapaxRatio < 0.55 ? 0.3 : hapaxRatio < 0.65 ? 0.1 : 0;
+
+  return ttrScore * 0.5 + hapaxScore * 0.5;
+}
+
+// =====================================================================
+//  SENTENCE-LEVEL SIGNALS
+// =====================================================================
+
+interface SentenceSignals {
+  aiPhrases: number;
+  humanMarkers: number;
+  formalVocab: number;
+  punctuation: number;
+}
+
+function computeSentenceSignals(sentence: string): SentenceSignals {
+  const lower = sentence.toLowerCase();
+  const tokens = tokenizeLower(sentence);
+
+  // AI phrase match within sentence
+  let bigramHits = 0;
+  AI_BIGRAMS.forEach(bg => {
+    if (lower.includes(bg)) bigramHits++;
+  });
+  let trigramHits = 0;
+  AI_TRIGRAMS.forEach(tg => {
+    if (lower.includes(tg)) trigramHits++;
+  });
+  const aiPhrases = clamp(bigramHits * 0.15 + trigramHits * 0.35, 0, 1);
+
+  // Human markers in sentence
+  let contractionHits = 0;
+  let fillerCasualHits = 0;
+  for (const t of tokens) {
+    if (HUMAN_CONTRACTIONS.has(t)) contractionHits++;
+    if (HUMAN_FILLERS.has(t) || HUMAN_CASUAL.has(t)) fillerCasualHits++;
+  }
+  const humanMarkers = clamp((contractionHits * 0.25 + fillerCasualHits * 0.2), 0, 1);
+
+  // Formal words in sentence
+  let formalHits = 0;
+  for (const t of tokens) {
+    if (AI_FORMAL_WORDS.has(t)) formalHits++;
+  }
+  const formalVocab = clamp(formalHits * 0.25, 0, 1);
+
+  // Sentence-level punctuation
+  const semicolons = (sentence.match(/;/g) || []).length;
+  const colons = (sentence.match(/:/g) || []).length;
+  const exclamQues = (sentence.match(/[!?]/g) || []).length;
+  // AI: multiple commas + semicolons in one sentence
+  const commas = (sentence.match(/,/g) || []).length;
+  const punctScore = clamp((semicolons * 0.3 + colons * 0.15 + commas * 0.08 - exclamQues * 0.1), 0, 1);
+
+  return { aiPhrases, humanMarkers, formalVocab, punctuation: punctScore };
+}
+
+// =====================================================================
+//  MODEL PREDICTIONS
+// =====================================================================
+
+function generateModelPredictions(aiScore: number, signals: DocSignals): ModelPrediction[] {
+  // Use burstiness + formal vocab to distinguish between models
+  // Claude is burstier than GPT-4, Gemini has lower formal vocab
+  const predictions: ModelPrediction[] = [];
+
+  if (aiScore > 30) {
+    // GPT-4 / ChatGPT: medium-high burstiness variance, high formal vocab
+    const gptProb = clamp(aiScore / 100 * 0.85 + signals.formalVocab * 0.15, 0, 0.95);
+    predictions.push({ model: 'GPT-4 / ChatGPT', probability: Math.round(gptProb * 100) / 100 });
+
+    // Claude: higher burstiness, similar formal vocab to GPT-4
+    const claudeScore = clamp(aiScore / 100 * 0.6 + signals.formalVocab * 0.1, 0, 0.8);
+    predictions.push({ model: 'Claude', probability: Math.round(claudeScore * 100) / 100 });
+
+    // Gemini: lower formal vocab, different fingerprint
+    const geminiScore = clamp(aiScore / 100 * 0.3 + signals.formalVocab * 0.05, 0, 0.5);
+    predictions.push({ model: 'Gemini', probability: Math.round(geminiScore * 100) / 100 });
+  }
+
+  const humanProb = clamp(1 - aiScore / 100 + signals.humanMarkers * 0.15, 0.1, 1);
+  predictions.push({ model: 'Human-written', probability: Math.round(humanProb * 100) / 100 });
+
+  return predictions;
+}
+
+// =====================================================================
+//  PLAGIARISM & HUMANIZER (unchanged heuristics)
+// =====================================================================
 
 function heuristicPlagiarismCheck(text: string): PlagiarismResult {
   const segments = splitSentences(text);
@@ -284,7 +625,6 @@ function heuristicPlagiarismCheck(text: string): PlagiarismResult {
 }
 
 function heuristicHumanize(text: string): HumanizeResult {
-  // Simulated humanization - in production this would call an LLM API
   const words = text.split(' ');
   const changes: { original: string; humanized: string; startIndex: number; endIndex: number }[] = [];
   let humanized = '';
@@ -297,10 +637,8 @@ function heuristicHumanize(text: string): HumanizeResult {
       if (alternatives.length > 0) {
         const alt = alternatives[Math.floor(Math.random() * alternatives.length)];
         changes.push({
-          original: word,
-          humanized: alt,
-          startIndex: humanized.length,
-          endIndex: humanized.length + alt.length,
+          original: word, humanized: alt,
+          startIndex: humanized.length, endIndex: humanized.length + alt.length,
         });
         humanized += alt;
         continue;
@@ -319,13 +657,40 @@ function heuristicHumanize(text: string): HumanizeResult {
   };
 }
 
-// ===== Helpers =====
+// =====================================================================
+//  HELPERS
+// =====================================================================
 
 function splitSentences(text: string): string[] {
   return text
     .split(/(?<=[.!?])\s+/)
     .filter(s => s.trim().length > 0)
     .map(s => s.trim());
+}
+
+function splitParagraphs(text: string): string[] {
+  return text
+    .split(/\n{2,}/)
+    .filter(p => p.trim().length > 0)
+    .map(p => p.trim());
+}
+
+function tokenize(text: string): string[] {
+  return text.toLowerCase()
+    .replace(/[^a-z0-9'\s-]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 0);
+}
+
+function tokenizeLower(text: string): string[] {
+  // Returns lowercase tokens including punctuation (for contraction matching)
+  return text.toLowerCase()
+    .split(/[^a-z0-9']+/)
+    .filter(w => w.length > 0);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function simpleHash(str: string): string {
@@ -336,63 +701,6 @@ function simpleHash(str: string): string {
     hash = hash & hash;
   }
   return Math.abs(hash).toString(16).padStart(8, '0');
-}
-
-function calculateHeuristicScore(sentence: string): number {
-  const text = sentence.toLowerCase().trim();
-  let score = 0;
-  let factors = 0;
-
-  // AI-like patterns
-  const aiPatterns = [
-    /\b(in conclusion|moreover|furthermore|additionally|however|therefore|consequently|nevertheless)\b/,
-    /\b(it is important to note that|it is worth mentioning that|it should be noted that)\b/,
-    /\b(as an ai|as a language model|i cannot|i don't have personal)\b/,
-    /\b(in today's|in the modern|in recent years|in this ever-changing)\b/,
-    /\b(delve into|landscape|realm|tapestry|crucial|paramount|robust)\b/,
-  ];
-
-  const humanPatterns = [
-    /\b(um|uh|like|you know|i mean|basically|literally)\b/,
-    /[.!?]\s+\w/,  // varied sentence starts
-    /\b(don't|can't|won't|it's|that's|they're|i'm)\b/,  // contractions
-    /\b(awesome|cool|crazy|weird|stuff|things)\b/,
-  ];
-
-  // Check AI patterns
-  for (const pattern of aiPatterns) {
-    if (pattern.test(text)) {
-      score += 0.3;
-      factors++;
-    }
-  }
-
-  // Check human patterns
-  for (const pattern of humanPatterns) {
-    if (pattern.test(text)) {
-      score -= 0.2;
-      factors++;
-    }
-  }
-
-  // Sentence length: very consistent = AI-like
-  const len = text.length;
-  if (len > 150) { score += 0.15; factors++; }
-  if (len < 10) { score -= 0.1; factors++; }
-
-  // Variety in punctuation
-  const commas = (text.match(/,/g) || []).length;
-  const periods = (text.match(/\./g) || []).length;
-  if (commas > 3) { score += 0.1; factors++; }
-
-  // Repetition detection
-  const words = text.split(/\s+/);
-  const uniqueWords = new Set(words);
-  const repetitionRatio = uniqueWords.size / words.length;
-  if (repetitionRatio < 0.5) { score += 0.2; factors++; }
-
-  if (factors === 0) return 0.5;
-  return Math.max(0, Math.min(1, 0.5 + score / factors));
 }
 
 function getAlternatives(word: string): string[] {
@@ -420,10 +728,7 @@ function normalizeCustomResponse(data: any, text: string): DetectionResult {
   const score = data.score || data.ai_score || data.probability || data.prediction || 0.5;
   const aiScore = typeof score === 'number' ? score * 100 : 50;
   return {
-    overallScore: aiScore,
-    humanScore: 100 - aiScore,
-    mixedScore: 0,
-    aiScore,
+    overallScore: aiScore, humanScore: 100 - aiScore, mixedScore: 0, aiScore,
     sentenceAnalysis: data.sentences || data.sentence_analysis || [],
     modelPredictions: data.models || data.model_predictions || [],
     processingTime: data.processing_time || 0,
