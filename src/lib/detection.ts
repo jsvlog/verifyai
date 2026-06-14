@@ -293,12 +293,15 @@ function heuristicAIDetection(text: string): DetectionResult {
   // --- Per-sentence analysis ---
   const sentenceAnalysis: SentenceAnalysis[] = sentences.map((s, i) => {
     const sentSignals = computeSentenceSignals(s);
-    // Blend document context into sentence score
-    const sentenceOnly = (sentSignals.aiPhrases * SIGNAL_WEIGHTS.aiPhrases +
-      (1 - sentSignals.humanMarkers) * SIGNAL_WEIGHTS.humanMarkers +
+    // Blend sentence-level signals (human markers are subtractive)
+    const sentenceOnly = clamp(
+      (sentSignals.aiPhrases * SIGNAL_WEIGHTS.aiPhrases +
       sentSignals.formalVocab * SIGNAL_WEIGHTS.formalVocab +
-      sentSignals.punctuation * SIGNAL_WEIGHTS.punctuation) /
-      (SIGNAL_WEIGHTS.aiPhrases + SIGNAL_WEIGHTS.humanMarkers + SIGNAL_WEIGHTS.formalVocab + SIGNAL_WEIGHTS.punctuation);
+      sentSignals.punctuation * SIGNAL_WEIGHTS.punctuation -
+      sentSignals.humanMarkers * SIGNAL_WEIGHTS.humanMarkers) /
+      (SIGNAL_WEIGHTS.aiPhrases + SIGNAL_WEIGHTS.formalVocab + SIGNAL_WEIGHTS.punctuation),
+      0, 1
+    );
 
     const docOnly = (docSignals.burstiness * SIGNAL_WEIGHTS.burstiness +
       docSignals.paragraphUniformity * SIGNAL_WEIGHTS.paragraphUniformity +
@@ -324,15 +327,17 @@ function heuristicAIDetection(text: string): DetectionResult {
   });
 
   // --- Overall document score ---
-  const overallScore =
+  const overallScore = clamp(
     docSignals.aiPhrases * SIGNAL_WEIGHTS.aiPhrases +
-    (1 - docSignals.humanMarkers) * SIGNAL_WEIGHTS.humanMarkers +
     docSignals.formalVocab * SIGNAL_WEIGHTS.formalVocab +
     docSignals.punctuation * SIGNAL_WEIGHTS.punctuation +
     docSignals.burstiness * SIGNAL_WEIGHTS.burstiness +
     docSignals.paragraphUniformity * SIGNAL_WEIGHTS.paragraphUniformity +
     docSignals.passiveVoice * SIGNAL_WEIGHTS.passiveVoice +
-    docSignals.lexicalDiversity * SIGNAL_WEIGHTS.lexicalDiversity;
+    docSignals.lexicalDiversity * SIGNAL_WEIGHTS.lexicalDiversity -
+    docSignals.humanMarkers * SIGNAL_WEIGHTS.humanMarkers,
+    0, 1
+  );
 
   const aiScore = Math.round(clamp(overallScore, 0, 1) * 1000) / 10;
 
@@ -419,27 +424,32 @@ function computeDocSignals(
   const punctScore = clamp(formalPunctRatio * 0.8 - emotionalPunctRatio * 0.3, 0, 1);
 
   // --- Sentence burstiness (variance in length) ---
-  const sentLengths = sentences.map(s => s.length);
-  const meanLen = sentLengths.length > 0
-    ? sentLengths.reduce((a, b) => a + b, 0) / sentLengths.length
-    : 0;
-  const variance = sentLengths.length > 1
-    ? sentLengths.reduce((sum, l) => sum + (l - meanLen) ** 2, 0) / sentLengths.length
-    : 0;
-  const stdDev = Math.sqrt(variance);
-  // Coefficient of variation — AI has low CV (uniform sentences)
-  const cv = meanLen > 0 ? stdDev / meanLen : 0;
-  // Human CV typically 0.5-0.9, AI CV typically 0.15-0.4
-  const burstinessScore = cv < 0.2 ? 0.9 : cv < 0.35 ? 0.7 : cv < 0.5 ? 0.4 : cv < 0.7 ? 0.1 : 0;
-
-  // Long/short sentence ratio
-  const longSents = sentLengths.filter(l => l > 120).length;
-  const shortSents = sentLengths.filter(l => l < 30).length;
-  const longShortRatio = (longSents / Math.max(sentences.length, 1) * 2 -
-    shortSents / Math.max(sentences.length, 1) * 2);
-  const extremeRatioScore = clamp(longShortRatio + 1, 0, 1) * 0.5;
-
-  const burstiness = burstinessScore * 0.7 + extremeRatioScore * 0.3;
+  // Requires sufficient sentences for reliable measurement
+  let burstiness: number;
+  if (sentences.length < 3) {
+    // Insufficient data for burstiness — no evidence either way
+    burstiness = 0.15;
+  } else {
+    const sentLengths = sentences.map(s => s.length);
+    const meanLen = sentLengths.length > 0
+      ? sentLengths.reduce((a, b) => a + b, 0) / sentLengths.length
+      : 0;
+    const variance = sentLengths.length > 1
+      ? sentLengths.reduce((sum, l) => sum + (l - meanLen) ** 2, 0) / sentLengths.length
+      : 0;
+    const stdDev = Math.sqrt(variance);
+    const cv = meanLen > 0 ? stdDev / meanLen : 0;
+    const burstinessScore = cv < 0.2 ? 0.9 : cv < 0.35 ? 0.7 : cv < 0.5 ? 0.4 : cv < 0.7 ? 0.1 : 0;
+    const longSents = sentLengths.filter(l => l > 120).length;
+    const shortSents = sentLengths.filter(l => l < 30).length;
+    const longShortRatio = (longSents / Math.max(sentences.length, 1) * 2 -
+      shortSents / Math.max(sentences.length, 1) * 2);
+    const extremeRatioScore = clamp(longShortRatio + 1, 0, 1) * 0.5;
+    burstiness = burstinessScore * 0.7 + extremeRatioScore * 0.3;
+    // Confidence scaling: fewer sentences = less reliable
+    const confidence = Math.min(sentences.length / 8, 1);
+    burstiness = burstiness * confidence;
+  }
 
   // --- Paragraph uniformity ---
   if (paragraphs.length >= 3) {
@@ -471,7 +481,7 @@ function computeDocSignals(
     formalVocab: formalDensity,
     punctuation: punctScore,
     burstiness,
-    paragraphUniformity: 0.5,
+    paragraphUniformity: 0.1,  // no evidence for short texts
     passiveVoice: computePassiveVoice(text, sentences),
     lexicalDiversity: computeLexicalDiversity(words),
   };
