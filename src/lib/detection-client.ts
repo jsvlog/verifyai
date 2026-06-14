@@ -45,14 +45,37 @@ interface SentenceResult {
 
 /**
  * Detect AI-generated text using the best available backend.
- * Falls back from model → heuristic automatically.
+ * Falls back from model API → heuristic automatically.
  */
 export async function detectAI(input: DetectionInput): Promise<DetectionOutput> {
   const t0 = performance.now();
 
-  // For now: heuristic only. Model support can be plugged in later.
+  // Try model API first if available
+  const modelUrl = process.env.NEXT_PUBLIC_MODEL_API_URL;
+  if (modelUrl) {
+    try {
+      const res = await fetch(`${modelUrl}/detect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: input.text }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          score: data.score,
+          humanScore: data.humanScore,
+          backend: 'model',
+          sentences: [],
+          timeMs: Math.round(performance.now() - t0),
+        };
+      }
+    } catch {
+      // Model server unreachable — fall back to heuristic
+    }
+  }
+
+  // Fall back to heuristic
   const result = heuristicDetect(input.text);
-  
   return {
     ...result,
     backend: 'heuristic',
