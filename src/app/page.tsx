@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import HeroInput from '@/components/HeroInput';
 import ProgressModal from '@/components/ProgressModal';
 import ResultsDisplay from '@/components/ResultsDisplay';
@@ -8,13 +8,32 @@ import TestimonialCarousel from '@/components/TestimonialCarousel';
 import TrustBadge from '@/components/TrustBadge';
 import Link from 'next/link';
 import { DetectionResult, ProcessingState } from '@/lib/types';
-import { detectAI } from '@/lib/detection-client';
+import { detectAI, preloadModel, isModelAvailable, getModelProgress } from '@/lib/detection-client';
 
 export default function HomePage() {
   const [state, setState] = useState<ProcessingState>('idle');
   const [text, setText] = useState('');
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [error, setError] = useState('');
+  const [modelReady, setModelReady] = useState(false);
+  const [modelProgress, setModelProgress] = useState(0);
+
+  // Start model download on page load
+  useEffect(() => {
+    preloadModel();
+    
+    // Poll for model readiness
+    const interval = setInterval(() => {
+      if (isModelAvailable()) {
+        setModelReady(true);
+        setModelProgress(100);
+        clearInterval(interval);
+      } else {
+        setModelProgress(getModelProgress());
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleAnalyze = useCallback(async (inputText: string) => {
     setText(inputText); setState('processing'); setResult(null); setError('');

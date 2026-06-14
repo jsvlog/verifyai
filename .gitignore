@@ -32,3 +32,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# model files (downloaded from HuggingFace at runtime)
+onnx_model/
