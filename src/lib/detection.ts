@@ -273,6 +273,19 @@ const AI_BIGRAMS = new Set([
   'but there was', 'what they did not', 'did not know was', 'was a deeper',
   'most people assumed', 'people assumed he', 'other passengers',
   'to other passengers',
+  'profound beauty', 'very essence', 'delicate interplay',
+  'breathtaking tapestry', 'profound realization', 'truly mattered',
+  'generously offered', 'mindful awareness', 'beacons of hope',
+  'vast expanse', 'renewed sense', 'quiet joy', 'silent promise',
+  'deep sense', 'sense of gratitude', 'heart swelling',
+  'swelling with', 'extraordinary ability', 'overwhelming connection',
+  'gentle breeze', 'sweet fragrance', 'simple quiet', 'quiet moments',
+  'modern life', 'relentless demands', 'pulled her away',
+  'no longer allow', 'daily existence', 'precious gift',
+  'golden glow', 'tranquil meadow', 'natural world',
+  'carried with her', 'carried with him', 'moment of profound',
+  'sun dipped', 'casting a warm', 'warm golden',
+  'light and shadow', 'one that seemed',
 ]);
 
 const AI_TRIGRAMS = new Set([
@@ -408,6 +421,20 @@ const AI_FORMAL_WORDS = new Set([
   'unravel', 'delineate', 'explicate', 'encapsulate', 'contextualize',
   'operationalize', 'conceptualize', 'ameliorate', 'mitigate',
   'extrapolate', 'antithetical',
+  'essence', 'tranquil', 'serenity', 'delicate', 'breathtaking',
+  'extraordinary', 'overwhelming', 'relentless', 'generously',
+  'mindful', 'cherish', 'precious', 'beacons', 'tapestry',
+  'gratitude', 'swelling', 'fragrance', 'enveloped', 'renewal',
+  'solace', 'melancholy', 'wistful', 'bittersweet',
+  'radiant', 'luminous', 'ethereal', 'resplendent',
+  'unwavering', 'steadfast', 'unyielding', 'boundless',
+  'limitless', 'infinite', 'eternal', 'timeless',
+  'whisper', 'murmur', 'shimmer', 'glimmer',
+  'cascade', 'ripple', 'meander', 'wander', 'linger',
+  'fleeting', 'transient', 'ephemeral', 'enduring',
+  'abundant', 'bountiful', 'reverence', 'awe', 'enchantment',
+  'utterly', 'thoroughly', 'completely', 'absolutely',
+  'remarkably', 'exceptionally', 'immensely', 'vastly',
 ]);
 
 const SIGNAL_WEIGHTS = {
