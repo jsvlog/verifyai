@@ -8,6 +8,7 @@ import TestimonialCarousel from '@/components/TestimonialCarousel';
 import TrustBadge from '@/components/TrustBadge';
 import Link from 'next/link';
 import { DetectionResult, ProcessingState } from '@/lib/types';
+import { detectAI } from '@/lib/detection-client';
 
 export default function HomePage() {
   const [state, setState] = useState<ProcessingState>('idle');
@@ -18,11 +19,30 @@ export default function HomePage() {
   const handleAnalyze = useCallback(async (inputText: string) => {
     setText(inputText); setState('processing'); setResult(null); setError('');
     try {
-      const res = await fetch('/api/detect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: inputText }) });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Detection failed');
-      await new Promise((r) => setTimeout(r, 500));
-      setResult(data.data); setState('done');
+      // Use client-side heuristic — instant, $0/server, works offline
+      const output = await detectAI({ text: inputText });
+      
+      // Map to DetectionResult format expected by ResultsDisplay
+      const mapped: DetectionResult = {
+        overallScore: output.score,
+        humanScore: output.humanScore,
+        mixedScore: 0,
+        aiScore: output.score,
+        sentenceAnalysis: output.sentences.map((s, i) => ({
+          sentence: s.text,
+          startIndex: i,
+          endIndex: i + 1,
+          aiProbability: s.aiProbability,
+          verdict: s.verdict,
+        })),
+        modelPredictions: [],
+        processingTime: output.timeMs / 1000,
+        textLength: inputText.length,
+        textHash: '',
+      };
+      
+      await new Promise((r) => setTimeout(r, 300));
+      setResult(mapped); setState('done');
     } catch (err) { setError(err instanceof Error ? err.message : 'Error'); setState('error'); }
   }, []);
 
