@@ -373,17 +373,19 @@ function computeDocSignals(
   text: string, sentences: string[], paragraphs: string[], words: string[]
 ): DocSignals {
   const lowerText = text.toLowerCase();
+  // Clean text for n-gram matching: collapse whitespace, remove punctuation between words
+  const cleanText = lowerText.replace(/[,.!?;:'"()\[\]{}]/g, ' ').replace(/\s+/g, ' ').trim();
 
   // --- AI phrase n-gram matching ---
   let bigramMatches = 0;
   AI_BIGRAMS.forEach(bg => {
-    if (lowerText.includes(bg)) bigramMatches++;
+    if (cleanText.includes(bg)) bigramMatches++;
   });
   const aiBigramDensity = Math.min(bigramMatches / Math.max(sentences.length, 1), 1);
 
   let trigramMatches = 0;
   AI_TRIGRAMS.forEach(tg => {
-    if (lowerText.includes(tg)) trigramMatches++;
+    if (cleanText.includes(tg)) trigramMatches++;
   });
   const aiTrigramScore = Math.min(trigramMatches / Math.max(sentences.length, 1), 1);
 
@@ -532,15 +534,17 @@ interface SentenceSignals {
 function computeSentenceSignals(sentence: string): SentenceSignals {
   const lower = sentence.toLowerCase();
   const tokens = tokenizeLower(sentence);
+  // Clean text for n-gram matching
+  const cleanSentence = lower.replace(/[,.!?;:'"()\[\]{}]/g, ' ').replace(/\s+/g, ' ').trim();
 
   // AI phrase match within sentence
   let bigramHits = 0;
   AI_BIGRAMS.forEach(bg => {
-    if (lower.includes(bg)) bigramHits++;
+    if (cleanSentence.includes(bg)) bigramHits++;
   });
   let trigramHits = 0;
   AI_TRIGRAMS.forEach(tg => {
-    if (lower.includes(tg)) trigramHits++;
+    if (cleanSentence.includes(tg)) trigramHits++;
   });
   const aiPhrases = clamp(bigramHits * 0.35 + trigramHits * 0.55, 0, 1);
 
