@@ -6,12 +6,51 @@ let modelPipeline: any = null;
 let modelLoading = false;
 let modelProgress = 0;
 
+// ================================================================
+//  PATCH: @xenova/transformers BPE tokenizer expects string merges
+//  ("Ġ t") but the onnx-community model provides array merges
+//  (["Ġ","t"]). Intercept fetch to fix tokenizer.json on the fly.
+// ================================================================
+let _tokenizerFetchPatched = false;
+function applyTokenizerPatch() {
+  if (_tokenizerFetchPatched || typeof window === 'undefined') return;
+  _tokenizerFetchPatched = true;
+  const _origFetch = window.fetch.bind(window) as typeof fetch;
+  window.fetch = async function (input: RequestInfo | URL, init?: RequestInit) {
+    const url = typeof input === 'string' ? input
+      : input instanceof Request ? input.url
+      : input.toString();
+    const isTokenizer =
+      url.includes('tokenizer.json') &&
+      url.includes('roberta-base-openai-detector');
+    if (!isTokenizer) return _origFetch(input, init);
+    const response = await _origFetch(input, init);
+    try {
+      const clone = response.clone();
+      const json = await clone.json();
+      if (json?.model?.merges?.[0] instanceof Array) {
+        json.model.merges = json.model.merges.map(
+          (m: string[] | string) => (typeof m === 'string' ? m : m.join(' '))
+        );
+        console.log('[VerifyAI] Patched tokenizer merges (array → string)');
+        return new Response(JSON.stringify(json), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
+      }
+    } catch { /* pass */ }
+    return response;
+  };
+}
+
 export function getModelProgress(): number { return modelProgress; }
 export function isModelAvailable(): boolean { return modelPipeline !== null; }
 
 export async function preloadModel(): Promise<void> {
   if (modelPipeline || modelLoading) return;
   modelLoading = true;
+  applyTokenizerPatch();
   try {
     const { pipeline } = await import('@xenova/transformers');
     modelPipeline = await pipeline(
