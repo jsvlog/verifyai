@@ -524,7 +524,12 @@ function computeDocSignals(
   for (const t of tokens) {
     if (AI_FORMAL_WORDS.has(t)) formalCount++;
   }
-  const formalDensity = Math.min(formalCount / Math.max(tokens.length, 1) * 40, 1);
+  // AI fiction overuses -ly adverbs (gently, softly, quietly, simply, etc.)
+  let adverbCount = 0;
+  for (const w of words) {
+    if (w.endsWith('ly') && w.length > 4) adverbCount++;
+  }
+  const formalDensity = Math.min((formalCount + adverbCount * 0.5) / Math.max(tokens.length, 1) * 40, 1);
 
   // --- Punctuation fingerprint ---
   const semicolons = (text.match(/;/g) || []).length;
