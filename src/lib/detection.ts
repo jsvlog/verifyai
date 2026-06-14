@@ -447,7 +447,7 @@ function computeDocSignals(
     const extremeRatioScore = clamp(longShortRatio + 1, 0, 1) * 0.5;
     burstiness = burstinessScore * 0.7 + extremeRatioScore * 0.3;
     // Confidence scaling: fewer sentences = less reliable
-    const confidence = Math.min(sentences.length / 8, 1);
+    const confidence = Math.min(sentences.length / 5, 1);
     burstiness = burstiness * confidence;
   }
 
