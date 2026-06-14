@@ -306,8 +306,8 @@ function heuristicAIDetection(text: string): DetectionResult {
       docSignals.lexicalDiversity * SIGNAL_WEIGHTS.lexicalDiversity) /
       (SIGNAL_WEIGHTS.burstiness + SIGNAL_WEIGHTS.paragraphUniformity + SIGNAL_WEIGHTS.passiveVoice + SIGNAL_WEIGHTS.lexicalDiversity);
 
-    // 60% sentence-level, 40% document-level context
-    const aiProb = sentenceOnly * 0.6 + docOnly * 0.4;
+    // 70% sentence-level, 30% document-level context
+    const aiProb = sentenceOnly * 0.7 + docOnly * 0.3;
 
     let verdict: 'human' | 'ai' | 'mixed';
     if (aiProb > 0.65) verdict = 'ai';
@@ -532,7 +532,7 @@ function computeSentenceSignals(sentence: string): SentenceSignals {
   AI_TRIGRAMS.forEach(tg => {
     if (lower.includes(tg)) trigramHits++;
   });
-  const aiPhrases = clamp(bigramHits * 0.15 + trigramHits * 0.35, 0, 1);
+  const aiPhrases = clamp(bigramHits * 0.35 + trigramHits * 0.55, 0, 1);
 
   // Human markers in sentence
   let contractionHits = 0;
@@ -548,7 +548,7 @@ function computeSentenceSignals(sentence: string): SentenceSignals {
   for (const t of tokens) {
     if (AI_FORMAL_WORDS.has(t)) formalHits++;
   }
-  const formalVocab = clamp(formalHits * 0.25, 0, 1);
+  const formalVocab = clamp(formalHits * 0.35, 0, 1);
 
   // Sentence-level punctuation
   const semicolons = (sentence.match(/;/g) || []).length;
