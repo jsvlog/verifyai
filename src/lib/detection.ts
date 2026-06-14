@@ -253,6 +253,26 @@ const AI_BIGRAMS = new Set([
   'and for', 'in that moment', 'from that day', 'from that moment',
   'after that day', 'the truest', 'the simplest', 'the greatest',
   'more than enough', 'his whole world', 'her whole world', 'their whole world',
+  // === AI sentimentality / death / memory patterns (genre-independent) ===
+  'appeared to be', 'there was a', 'what they did', 'they did not',
+  'deeper reason', 'behind his', 'beloved wife', 'passed away',
+  'long illness', 'her death', 'his death', 'took her', 'took him',
+  'cherish the', 'treasured part', 'continued to live', 'never truly',
+  'truly disappears', 'warmth and compassion', 'greatest way to',
+  'way to honor', 'taught us', 'meant to be', 'meant to be kept',
+  'meant to be held', 'live on in', 'lives of others', 'sense of peace',
+  'peace knowing', 'continued its', 'journey through',
+  'close to her', 'close to him', 'feel close to', 'made him feel',
+  'made her feel', 'allowed him to', 'allowed her to',
+  'he realized that', 'she realized that', 'they realized that',
+  'realized that memories', 'memories are not', 'not meant to be',
+  'not meant to', 'honor the people', 'kindness they taught',
+  'continued to live on', 'love never truly', 'still belonged to',
+  'it always would', 'kindness between strangers',
+  // Overly explained character motivations (AI hallmark)
+  'but there was', 'what they did not', 'did not know was', 'was a deeper',
+  'most people assumed', 'people assumed he', 'other passengers',
+  'to other passengers',
 ]);
 
 const AI_TRIGRAMS = new Set([
@@ -391,11 +411,11 @@ const AI_FORMAL_WORDS = new Set([
 ]);
 
 const SIGNAL_WEIGHTS = {
-  aiPhrases: 0.45,       // n-gram AI markers — the most reliable signal
-  humanMarkers: 0.03,    // contractions, fillers, casual words (subtractive)
-  formalVocab: 0.18,     // academic/formal AI overused words
+  aiPhrases: 0.42,       // n-gram AI markers
+  humanMarkers: 0.04,    // contractions, fillers, casual words (subtractive)
+  formalVocab: 0.16,     // academic/formal AI overused words
   punctuation: 0.04,     // semicolons, em-dashes
-  burstiness: 0.10,      // sentence length variance
+  burstiness: 0.14,      // sentence length variance (restored — catches AI fiction structure)
   paragraphUniformity: 0.02, // uniform paragraphs
   passiveVoice: 0.03,    // passive constructions
   lexicalDiversity: 0.15, // type-token ratio
