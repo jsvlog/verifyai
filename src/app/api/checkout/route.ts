@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(checkoutUrl)
   } catch (error) {
-    console.error('Checkout error:', error)
-    return NextResponse.redirect(new URL('/pricing?error=checkout-failed', request.url))
+    const msg = error instanceof Error ? error.message : 'Unknown error'
+    console.error('Checkout error:', msg)
+    return NextResponse.redirect(new URL(`/pricing?error=${encodeURIComponent(msg)}`, request.url))
   }
 }
