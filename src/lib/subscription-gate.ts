@@ -51,12 +51,12 @@ export function getFreeScanState(): FreeScanState {
   if (typeof window === 'undefined') return { used: 0, limit: FREE_SCAN_LIMIT, remaining: FREE_SCAN_LIMIT, blocked: false };
 
   const raw = localStorage.getItem(LS_KEY);
-  const data = raw ? JSON.parse(raw) : { count: 0, resetAt: Date.now() + 7 * 24 * 60 * 60 * 1000 };
+  const data = raw ? JSON.parse(raw) : { count: 0, resetAt: Date.now() + 24 * 60 * 60 * 1000 };
 
-  // Reset if week passed
+  // Reset if day passed
   if (Date.now() > data.resetAt) {
     data.count = 0;
-    data.resetAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    data.resetAt = Date.now() + 24 * 60 * 60 * 1000;
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   }
 
@@ -74,7 +74,7 @@ export function useFreeScan(): FreeScanState {
 
   if (!current.blocked) {
     const raw = localStorage.getItem(LS_KEY);
-    const data = raw ? JSON.parse(raw) : { count: 0, resetAt: Date.now() + 7 * 24 * 60 * 60 * 1000 };
+    const data = raw ? JSON.parse(raw) : { count: 0, resetAt: Date.now() + 24 * 60 * 60 * 1000 };
     data.count++;
     localStorage.setItem(LS_KEY, JSON.stringify(data));
   }

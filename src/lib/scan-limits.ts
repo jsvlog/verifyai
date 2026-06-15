@@ -7,7 +7,7 @@ const adminClient = createClient(
 )
 
 const FREE_SCAN_LIMIT = 5
-const FREE_SCAN_WINDOW_DAYS = 7
+const FREE_SCAN_WINDOW_DAYS = 1
 
 export interface ScanLimitResult {
   allowed: boolean
