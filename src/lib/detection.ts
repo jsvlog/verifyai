@@ -1,4 +1,6 @@
 import { DetectionResult, PlagiarismResult, HumanizeResult, DetectRequest, SentenceAnalysis, ModelPrediction } from './types';
+import { humanizeViaAI } from './humanizer';
+import { checkPlagiarismViaDDG } from './plagiarism';
 
 // ===== Pluggable AI Detection Backends =====
 
@@ -49,11 +51,11 @@ export async function detectAI(
 }
 
 export async function checkPlagiarism(text: string, config?: DetectionConfig): Promise<PlagiarismResult> {
-  return heuristicPlagiarismCheck(text);
+  return checkPlagiarismViaDDG(text);
 }
 
 export async function humanizeText(text: string, config?: DetectionConfig): Promise<HumanizeResult> {
-  return heuristicHumanize(text);
+  return humanizeViaAI(text);
 }
 
 // ===== Provider-Specific Implementations (unchanged) =====
