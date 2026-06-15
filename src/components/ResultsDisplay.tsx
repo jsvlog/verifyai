@@ -2,23 +2,26 @@
 
 import type { DetectionResult, PlagiarismResult, HumanizeResult, ToolType } from '@/lib/types';
 import { useState } from 'react';
+import Link from 'next/link';
 
 interface ResultsDisplayProps {
   result: DetectionResult | PlagiarismResult | HumanizeResult;
   toolType: ToolType;
   originalText?: string;
   onReset?: () => void;
+  /** Text that was scanned — used for "Humanize this" CTA */
+  scannedText?: string;
 }
 
-export default function ResultsDisplay({ result, toolType, originalText, onReset }: ResultsDisplayProps) {
+export default function ResultsDisplay({ result, toolType, originalText, onReset, scannedText }: ResultsDisplayProps) {
   if (toolType === 'text-humanizer') return <HumanizerResult result={result as HumanizeResult} originalText={originalText} onReset={onReset} />;
   if (toolType === 'plagiarism-checker') return <PlagiarismResult result={result as PlagiarismResult} onReset={onReset} />;
-  return <AIDetectorResult result={result as DetectionResult} onReset={onReset} />;
+  return <AIDetectorResult result={result as DetectionResult} onReset={onReset} scannedText={scannedText} />;
 }
 
 // ===== AI Detector Results =====
 
-function AIDetectorResult({ result, onReset }: { result: DetectionResult; onReset?: () => void }) {
+function AIDetectorResult({ result, onReset, scannedText }: { result: DetectionResult; onReset?: () => void; scannedText?: string }) {
   const [view, setView] = useState<'overview' | 'sentences'>('overview');
 
   const getVerdict = () => {
@@ -147,6 +150,30 @@ function AIDetectorResult({ result, onReset }: { result: DetectionResult; onRese
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Humanize CTA — shown after any AI detection result */}
+      {scannedText && scannedText.trim().length > 0 && (
+        <div className="mt-6 bg-gradient-to-r from-[#fff5f5] to-[#fff9f0] rounded-3xl border border-[#f5e6cc] shadow-lg p-6 sm:p-8 animate-scale-in">
+          <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+            <div className="text-4xl">✨</div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-[#3d3227] mb-1">Make it sound human</h3>
+              <p className="text-sm text-[#8c7a64]">
+                Transform this AI-generated text into natural, undetectable writing with our Text Humanizer. Premium feature.
+              </p>
+            </div>
+            <Link
+              href={`/text-humanizer?text=${encodeURIComponent(scannedText.slice(0, 500))}`}
+              className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#ff6b6b] to-[#ffa94d] text-white font-semibold rounded-2xl shadow-lg shadow-[#ff6b6b]/25 hover:shadow-xl transition-all whitespace-nowrap"
+            >
+              Humanize this text
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </Link>
           </div>
         </div>
       )}

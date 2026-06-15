@@ -7,6 +7,7 @@ interface HeroInputProps {
   onAnalyze: (text: string) => void;
   buttonText?: string;
   isProcessing?: boolean;
+  initialText?: string;
 }
 
 export default function HeroInput({
@@ -14,8 +15,9 @@ export default function HeroInput({
   onAnalyze,
   buttonText = 'Analyze Text',
   isProcessing = false,
+  initialText = '',
 }: HeroInputProps) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(initialText);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const charCount = text.length;

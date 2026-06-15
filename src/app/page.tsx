@@ -9,6 +9,7 @@ import TrustBadge from '@/components/TrustBadge';
 import Link from 'next/link';
 import { DetectionResult, ProcessingState } from '@/lib/types';
 import { detectAI, preloadModel, isModelAvailable, getModelProgress } from '@/lib/detection-client';
+import { getFreeScanState, useFreeScan } from '@/lib/subscription-gate';
 
 export default function HomePage() {
   const [state, setState] = useState<ProcessingState>('idle');
@@ -17,12 +18,12 @@ export default function HomePage() {
   const [error, setError] = useState('');
   const [modelReady, setModelReady] = useState(false);
   const [modelProgress, setModelProgress] = useState(0);
+  const [scanState, setScanState] = useState(() => getFreeScanState());
 
   // Start model download on page load
   useEffect(() => {
     preloadModel();
-    
-    // Poll for model readiness
+
     const interval = setInterval(() => {
       if (isModelAvailable()) {
         setModelReady(true);
@@ -36,12 +37,28 @@ export default function HomePage() {
   }, []);
 
   const handleAnalyze = useCallback(async (inputText: string) => {
-    setText(inputText); setState('processing'); setResult(null); setError('');
+    setText(inputText);
+    setResult(null);
+
+    // Check free scan limit
+    const currentScan = getFreeScanState();
+    if (currentScan.blocked) {
+      setState('idle');
+      setError(`You've used all ${currentScan.limit} free scans. Create an account to continue.`);
+      setScanState(currentScan);
+      return;
+    }
+
+    setState('processing');
+    setError('');
+
     try {
-      // Use client-side heuristic — instant, $0/server, works offline
       const output = await detectAI({ text: inputText });
-      
-      // Map to DetectionResult format expected by ResultsDisplay
+
+      // Consume a free scan (doesn't apply to logged-in users)
+      const updated = useFreeScan();
+      setScanState(updated);
+
       const mapped: DetectionResult = {
         overallScore: output.score,
         humanScore: output.humanScore,
@@ -62,19 +79,28 @@ export default function HomePage() {
         modelScore: output.modelScore,
         heuristicScore: output.heuristicScore,
       };
-      
+
       await new Promise((r) => setTimeout(r, 300));
-      setResult(mapped); setState('done');
-    } catch (err) { setError(err instanceof Error ? err.message : 'Error'); setState('error'); }
+      setResult(mapped);
+      setState('done');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error');
+      setState('error');
+    }
   }, []);
 
-  const handleReset = () => { setState('idle'); setText(''); setResult(null); setError(''); };
+  const handleReset = () => {
+    setState('idle');
+    setText('');
+    setResult(null);
+    setError('');
+    setScanState(getFreeScanState());
+  };
 
   return (
     <>
       <ProgressModal isOpen={state === 'processing'} text={text} state={state} />
       <div className="gradient-hero min-h-[calc(100vh-4rem)] relative overflow-hidden">
-        {/* Floating orbs */}
         <div className="orb orb-coral" style={{ top: '-10%', right: '-5%' }} />
         <div className="orb orb-amber" style={{ bottom: '10%', left: '-8%' }} />
 
@@ -106,6 +132,12 @@ export default function HomePage() {
                     <span className="font-semibold text-[#3d3227]">4.8</span>
                     <span className="text-[#40c057] font-bold">Excellent</span>
                   </div>
+                  {/* Free scan counter */}
+                  <div className="badge">
+                    <span className="text-xs text-[#8c7a64]">
+                      {scanState.remaining}/{scanState.limit} free scans
+                    </span>
+                  </div>
                 </div>
 
                 {/* Hero */}
@@ -132,73 +164,106 @@ export default function HomePage() {
                   ))}
                 </div>
 
-                {/* Input */}
+                {/* Input — blocked or open */}
                 <div className="mt-10 animate-fade-in-up" style={{ animationDelay: '0.25s' }}>
-                  <HeroInput onAnalyze={handleAnalyze} isProcessing={state === 'processing'} />
+                  {scanState.blocked ? (
+                    <div className="p-8 bg-white rounded-3xl border border-[#f5e6cc] shadow-xl shadow-[#3d3227]/6">
+                      <div className="text-5xl mb-4">🔒</div>
+                      <h3 className="text-xl font-bold text-[#3d3227] mb-2">Free scans used up</h3>
+                      <p className="text-sm text-[#8c7a64] mb-6">
+                        You've used {scanState.used} of {scanState.limit} free scans. Create a free account or upgrade to continue.
+                      </p>
+                      <div className="flex items-center justify-center gap-3">
+                        <Link href="/login" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#ff6b6b] to-[#ffa94d] text-white font-semibold rounded-2xl shadow-lg shadow-[#ff6b6b]/25 hover:shadow-xl transition-all">
+                          Sign up free
+                        </Link>
+                        <Link href="/pricing" className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-[#f5e6cc] text-[#3d3227] font-semibold rounded-2xl hover:border-[#ffa94d] transition-all">
+                          View plans
+                        </Link>
+                      </div>
+                      {scanState.remaining <= 1 && !scanState.blocked && (
+                        <p className="mt-4 text-xs text-[#ff6b6b]">
+                          Only {scanState.remaining} free scan remaining — consider creating an account
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <HeroInput onAnalyze={handleAnalyze} isProcessing={state === 'processing'} />
+                  )}
                 </div>
 
-                {error && state === 'error' && (
+                {error && (
                   <div className="mt-6 p-4 bg-[#fff5f5] border border-[#ffc9c9] rounded-2xl animate-scale-in">
                     <p className="text-sm text-[#f03e3e]">{error}</p>
-                    <button onClick={handleReset} className="mt-2 text-xs font-semibold text-[#f03e3e] underline">Try again</button>
+                    {scanState.blocked ? (
+                      <div className="flex items-center justify-center gap-2 mt-2">
+                        <Link href="/login" className="text-xs font-semibold text-[#f03e3e] underline">Sign up</Link>
+                        <span className="text-xs text-[#b8a88e]">or</span>
+                        <Link href="/pricing" className="text-xs font-semibold text-[#ff6b6b] underline">View plans</Link>
+                      </div>
+                    ) : (
+                      <button onClick={handleReset} className="mt-2 text-xs font-semibold text-[#f03e3e] underline">Try again</button>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Testimonials section */}
-              <div className="mt-20 md:mt-28 pt-16 border-t border-[#f5e6cc] animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-                <div className="text-center mb-10">
-                  <span className="badge mb-3">Testimonials</span>
-                  <h2 className="text-2xl md:text-3xl font-bold text-[#3d3227] tracking-tight mt-2">
-                    Trusted by <span className="text-gradient-warm">thousands</span>
-                  </h2>
-                </div>
-                <div className="flex justify-center">
-                  <TestimonialCarousel />
-                </div>
-              </div>
-
-              {/* How it works */}
-              <div className="mt-20 md:mt-28 animate-fade-in-up" style={{ animationDelay: '0.35s' }}>
-                <div className="text-center mb-12">
-                  <span className="badge mb-3">How it works</span>
-                  <h2 className="text-2xl md:text-3xl font-bold text-[#3d3227] tracking-tight mt-2">
-                    Three simple steps
-                  </h2>
-                </div>
-                <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                  {[
-                    { step: '1', icon: '📝', title: 'Paste your text', desc: 'Copy and paste any text you want to check — up to 25,000 characters.' },
-                    { step: '2', icon: '🔍', title: 'AI analyzes it', desc: 'Our detection engine analyzes linguistic patterns, sentence structure, and vocabulary.' },
-                    { step: '3', icon: '📊', title: 'Get your score', desc: 'See your AI probability score with sentence-level breakdown and model predictions.' },
-                  ].map((s) => (
-                    <div key={s.step} className="bg-white rounded-2xl border border-[#f5e6cc] shadow-md p-6 text-center hover:shadow-lg transition-shadow">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6b6b] to-[#ffa94d] flex items-center justify-center text-white text-sm font-bold mx-auto mb-4 shadow-md">
-                        {s.step}
-                      </div>
-                      <div className="text-2xl mb-3">{s.icon}</div>
-                      <h3 className="font-bold text-[#3d3227] mb-2">{s.title}</h3>
-                      <p className="text-sm text-[#8c7a64]">{s.desc}</p>
+              {/* Testimonials + How it works + Trust (same as before, only shown when idle) */}
+              {state === 'idle' && (
+                <>
+                  <div className="mt-20 md:mt-28 pt-16 border-t border-[#f5e6cc] animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+                    <div className="text-center mb-10">
+                      <span className="badge mb-3">Testimonials</span>
+                      <h2 className="text-2xl md:text-3xl font-bold text-[#3d3227] tracking-tight mt-2">
+                        Trusted by <span className="text-gradient-warm">thousands</span>
+                      </h2>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div className="flex justify-center">
+                      <TestimonialCarousel />
+                    </div>
+                  </div>
 
-              {/* Trust badges section */}
-              <div className="mt-20 md:mt-28 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-                <div className="text-center mb-10">
-                  <span className="badge mb-3">Trust & Security</span>
-                  <h2 className="text-2xl md:text-3xl font-bold text-[#3d3227] tracking-tight mt-2">
-                    Your data is <span className="text-gradient-warm">safe</span> with us
-                  </h2>
-                </div>
-                <div className="max-w-3xl mx-auto">
-                  <TrustBadge />
-                </div>
-              </div>
+                  <div className="mt-20 md:mt-28 animate-fade-in-up" style={{ animationDelay: '0.35s' }}>
+                    <div className="text-center mb-12">
+                      <span className="badge mb-3">How it works</span>
+                      <h2 className="text-2xl md:text-3xl font-bold text-[#3d3227] tracking-tight mt-2">
+                        Three simple steps
+                      </h2>
+                    </div>
+                    <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                      {[
+                        { step: '1', icon: '📝', title: 'Paste your text', desc: 'Copy and paste any text you want to check — up to 25,000 characters.' },
+                        { step: '2', icon: '🔍', title: 'AI analyzes it', desc: 'Our detection engine analyzes linguistic patterns, sentence structure, and vocabulary.' },
+                        { step: '3', icon: '📊', title: 'Get your score', desc: 'See your AI probability score with sentence-level breakdown and model predictions.' },
+                      ].map((s) => (
+                        <div key={s.step} className="bg-white rounded-2xl border border-[#f5e6cc] shadow-md p-6 text-center hover:shadow-lg transition-shadow">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6b6b] to-[#ffa94d] flex items-center justify-center text-white text-sm font-bold mx-auto mb-4 shadow-md">
+                            {s.step}
+                          </div>
+                          <div className="text-2xl mb-3">{s.icon}</div>
+                          <h3 className="font-bold text-[#3d3227] mb-2">{s.title}</h3>
+                          <p className="text-sm text-[#8c7a64]">{s.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-20 md:mt-28 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+                    <div className="text-center mb-10">
+                      <span className="badge mb-3">Trust & Security</span>
+                      <h2 className="text-2xl md:text-3xl font-bold text-[#3d3227] tracking-tight mt-2">
+                        Your data is <span className="text-gradient-warm">safe</span> with us
+                      </h2>
+                    </div>
+                    <div className="max-w-3xl mx-auto">
+                      <TrustBadge />
+                    </div>
+                  </div>
+                </>
+              )}
             </>
           ) : (
-            <ResultsDisplay result={result!} toolType="ai-detector" onReset={handleReset} />
+            <ResultsDisplay result={result!} toolType="ai-detector" onReset={handleReset} scannedText={text} />
           )}
         </div>
       </div>
