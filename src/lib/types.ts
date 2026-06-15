@@ -10,6 +10,10 @@ export interface DetectionResult {
   processingTime: number;      // in seconds
   textLength: number;
   textHash: string;
+  // Hybrid detection breakdown (when model + heuristic both run)
+  backend?: 'model' | 'heuristic' | 'hybrid';
+  modelScore?: number;         // RoBERTa model score 0-100
+  heuristicScore?: number;     // Heuristic score 0-100
 }
 
 export interface SentenceAnalysis {

@@ -30,27 +30,59 @@ export async function preloadModel(): Promise<void> {
 
 export interface DetectionInput { text: string; }
 export interface DetectionOutput {
-  score: number; humanScore: number; backend: 'model' | 'heuristic';
+  score: number; humanScore: number; backend: 'model' | 'heuristic' | 'hybrid';
+  modelScore?: number; heuristicScore?: number;
   sentences: { text: string; aiProbability: number; verdict: 'human'|'ai'|'mixed' }[];
   timeMs: number;
 }
 
 export async function detectAI(input: DetectionInput): Promise<DetectionOutput> {
   const t0 = performance.now();
-  if (modelPipeline) {
-    try {
-      const results = await modelPipeline(input.text.slice(0, 512));
-      const top = results[0];
-      // Model labels: "Fake"/"Real" (OpenAI detector). Also handle generic LABEL_0/LABEL_1.
-      const label = (top.label || '').toLowerCase();
-      const isAI = label === 'fake' || label === 'label_0' || label === 'ai';
-      const score = Math.round((isAI ? top.score : 1 - top.score) * 1000) / 10;
-      return { score, humanScore: Math.round((100 - score) * 10) / 10, backend: 'model', sentences: [], timeMs: Math.round(performance.now() - t0) };
-    } catch {}
-  }
-  // Heuristic fallback
+
+  // Always run heuristic — it catches AI fiction/narrative patterns
   const h = heuristicDetect(input.text);
-  return { ...h, backend: 'heuristic', timeMs: Math.round(performance.now() - t0) };
+
+  // If model unavailable, pure heuristic
+  if (!modelPipeline) {
+    return { ...h, backend: 'heuristic', timeMs: Math.round(performance.now() - t0) };
+  }
+
+  // Model available — hybrid scoring
+  try {
+    const results = await modelPipeline(input.text.slice(0, 512));
+    const top = results[0];
+    const label = (top.label || '').toLowerCase();
+    const isAI = label === 'fake' || label === 'label_0' || label === 'ai';
+    // Normalize model score: 0-100 where 100 = confidently AI
+    const modelScore = Math.round((isAI ? top.score : 1 - top.score) * 1000) / 10;
+
+    // Blend: heuristic catches fiction/patterns, model catches academic AI
+    // Take the stronger signal + bonus when both agree
+    const blended = Math.max(modelScore, h.score);
+    // If both agree on AI (>50), boost slightly
+    const hybridScore = (modelScore > 50 && h.score > 50)
+      ? Math.min(100, blended + 5)
+      : blended;
+
+    console.debug('[VerifyAI]',
+      `model=${modelScore.toFixed(1)}% (${top.label} ${top.score.toFixed(3)})`,
+      `heuristic=${h.score.toFixed(1)}%`,
+      `→ hybrid=${hybridScore.toFixed(1)}%`
+    );
+
+    return {
+      score: Math.round(hybridScore * 10) / 10,
+      humanScore: Math.round((100 - hybridScore) * 10) / 10,
+      backend: 'hybrid',
+      modelScore,
+      heuristicScore: h.score,
+      sentences: h.sentences,
+      timeMs: Math.round(performance.now() - t0),
+    };
+  } catch (e) {
+    console.warn('[VerifyAI] Model inference failed, heuristic fallback:', e);
+    return { ...h, backend: 'heuristic', timeMs: Math.round(performance.now() - t0) };
+  }
 }
 
 // ================================================================

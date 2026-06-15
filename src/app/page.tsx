@@ -58,6 +58,9 @@ export default function HomePage() {
         processingTime: output.timeMs / 1000,
         textLength: inputText.length,
         textHash: '',
+        backend: output.backend,
+        modelScore: output.modelScore,
+        heuristicScore: output.heuristicScore,
       };
       
       await new Promise((r) => setTimeout(r, 300));
