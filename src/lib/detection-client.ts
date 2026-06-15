@@ -169,17 +169,17 @@ function heuristicDetect(text: string) {
   tokens.forEach(t => { if (HUMAN_CONTRACTIONS.has(t)) contractionCount++; if (HUMAN_CASUAL.has(t)) casualCount++; });
 
   const phraseDensity = Math.min(bigramHits / Math.max(sentences.length, 1), 1);
-  const formalDensity = Math.min((formalCount + adverbCount * 0.25) / Math.max(tokens.length, 1) * 40, 1);
+  const formalDensity = Math.min((formalCount + adverbCount * 0.50) / Math.max(tokens.length, 1) * 50, 1);
   const humanDensity = Math.min((contractionCount * 0.25 + casualCount * 0.2) / Math.max(tokens.length, 1) * 30, 1);
-  let burstiness = 0.15;
+  let burstiness = 0.25;
   if (sentences.length >= 3) {
     const lens = sentences.map(s => s.length);
     const mean = lens.reduce((a,b)=>a+b,0)/lens.length;
     const vari = lens.reduce((s,l)=>s+(l-mean)**2,0)/lens.length;
     const cv = mean>0 ? Math.sqrt(vari)/mean : 0;
-    burstiness = (cv<0.2?0.9:cv<0.35?0.7:cv<0.5?0.4:cv<0.7?0.1:0) * Math.min(sentences.length/5,1);
+    burstiness = (cv<0.25?0.9:cv<0.4?0.7:cv<0.55?0.5:cv<0.7?0.3:0.1) * Math.min(sentences.length/5,1);
   }
-  const docScore = phraseDensity * 0.42 + formalDensity * 0.16 + burstiness * 0.14 - humanDensity * 0.04;
+  const docScore = phraseDensity * 0.50 + formalDensity * 0.25 + burstiness * 0.20 - humanDensity * 0.05;
   const overallScore = Math.max(0, Math.min(100, docScore * 100));
   
   const outSentences = sentences.map(s => {
@@ -187,7 +187,7 @@ function heuristicDetect(text: string) {
     let hits=0; AI_BIGRAMS.forEach(bg => { if (sc.includes(bg)) hits++; });
     let sf=0; s.toLowerCase().split(/[^a-z0-9']+/).filter(w=>w.length>0).forEach(t=>{ if(AI_FORMAL.has(t)) sf++; });
     const ss = Math.min(hits*0.50 + sf*0.35, 1);
-    return { text: s, aiProbability: Math.round(ss*1000)/1000, verdict: (ss>0.55?'ai':ss>0.30?'mixed':'human') as 'ai'|'mixed'|'human' };
+    return { text: s, aiProbability: Math.round(ss*1000)/1000, verdict: (ss>0.40?'ai':ss>0.25?'mixed':'human') as 'ai'|'mixed'|'human' };
   });
   return { score: Math.round(overallScore*10)/10, humanScore: Math.round((100-overallScore)*10)/10, sentences: outSentences };
 }

@@ -25,8 +25,8 @@ function AIDetectorResult({ result, onReset, scannedText }: { result: DetectionR
   const [view, setView] = useState<'overview' | 'sentences'>('overview');
 
   const getVerdict = () => {
-    if (result.overallScore > 60) return { label: 'Likely AI-generated', color: '#ff6b6b', bg: '#fff5f5', bar: '#ff6b6b' };
-    if (result.overallScore > 30) return { label: 'Possibly mixed', color: '#ffa94d', bg: '#fff9f0', bar: '#ffa94d' };
+    if (result.overallScore > 40) return { label: 'Likely AI-generated', color: '#ff6b6b', bg: '#fff5f5', bar: '#ff6b6b' };
+    if (result.overallScore > 15) return { label: 'Possibly mixed', color: '#ffa94d', bg: '#fff9f0', bar: '#ffa94d' };
     return { label: 'Likely human-written', color: '#40c057', bg: '#ebfbee', bar: '#40c057' };
   };
 
@@ -80,9 +80,9 @@ function AIDetectorResult({ result, onReset, scannedText }: { result: DetectionR
                   <span className="text-lg font-semibold text-[#3d3227]">{v.label}</span>
                 </div>
                 <p className="text-sm text-[#8c7a64] leading-relaxed">
-                  {result.overallScore > 60
+                  {result.overallScore > 40
                     ? 'This text shows strong patterns consistent with AI generation. Review the sentence breakdown for details.'
-                    : result.overallScore > 30
+                    : result.overallScore > 15
                     ? 'This text contains both human-written and AI-generated elements.'
                     : 'This text appears to be naturally written by a human.'}
                 </p>
