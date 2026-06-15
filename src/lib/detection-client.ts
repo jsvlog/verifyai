@@ -57,11 +57,11 @@ export async function detectAI(input: DetectionInput): Promise<DetectionOutput> 
     const modelScore = Math.round((isAI ? top.score : 1 - top.score) * 1000) / 10;
 
     // Blend: heuristic catches fiction/patterns, model catches academic AI
-    // Take the stronger signal + bonus when both agree
+    // Take the stronger signal and amplify when any detector finds AI
     const blended = Math.max(modelScore, h.score);
-    // If both agree on AI (>50), boost slightly
-    const hybridScore = (modelScore > 50 && h.score > 50)
-      ? Math.min(100, blended + 5)
+    const hasSignal = modelScore > 20 || h.score > 20;
+    const hybridScore = hasSignal
+      ? Math.min(100, blended * 1.15)  // boost when any signal detected
       : blended;
 
     console.debug('[VerifyAI]',
@@ -115,7 +115,16 @@ const AI_BIGRAMS = new Set([
   'deep sense','sense of gratitude','heart swelling','extraordinary ability',
   'overwhelming connection','gentle breeze','simple quiet','quiet moments','modern life',
   'relentless demands','daily existence','precious gift','golden glow','natural world',
-  'carried with her','tranquil meadow',
+  'carried with her','tranquil meadow','could not help','felt a sense','looked at him','looked at her',
+  'in the dim','in the soft','the sound of','he could feel','she could feel',
+  'reminded him of','reminded her of','the way the','as though','as if the',
+  'something about','there was a','there was an','in ways that','in the silence',
+  'took a deep','closed his eyes','closed her eyes','brimming with','a hint of',
+  'voice barely','voice was','gaze lingered','fingers traced','heart raced',
+  'moment hung','air grew','a strange','an overwhelming','something deeper',
+  'unspoken words','unspoken understanding','quiet intensity','gentle touch',
+  'could see the','could sense the','the weight of','the warmth of','the cold of',
+  'a sense of','a wave of','a flicker of','a shadow of','a ghost of',
 ]);
 const AI_FORMAL = new Set([
   'accordingly','albeit','amidst','approximately','commence','consequently','consolidate',
@@ -140,6 +149,13 @@ const AI_FORMAL = new Set([
   'cascade','ripple','meander','wander','linger','fleeting','ephemeral','enduring',
   'abundant','reverence','awe','enchantment','utterly','thoroughly','completely',
   'absolutely','remarkably','exceptionally','immensely','vastly',
+  // AI fiction/narrative patterns
+  'perhaps','somehow','almost','barely','faintly','subtly','slightly',
+  'strangely','oddly','curiously','suddenly','slowly','gently','softly','quietly',
+  'tenderly','warmly','coldly','dimly','faint','subtle','strange','odd','curious',
+  'silence','shadow','echo','memory','ghost','weight','warmth','chill',
+  'unspoken','lingering','fading','distant','hollow','aching','heavy',
+  'stirring','shifting','drifting','hovering','trembling','quivering',
 ]);
 const HUMAN_CONTRACTIONS = new Set([
   'ain\'t','can\'t','could\'ve','couldn\'t','didn\'t','doesn\'t','don\'t','gonna','gotta',
@@ -180,7 +196,10 @@ function heuristicDetect(text: string) {
     burstiness = (cv<0.25?0.9:cv<0.4?0.7:cv<0.55?0.5:cv<0.7?0.3:0.1) * Math.min(sentences.length/5,1);
   }
   const docScore = phraseDensity * 0.50 + formalDensity * 0.25 + burstiness * 0.20 - humanDensity * 0.05;
-  const overallScore = Math.max(0, Math.min(100, docScore * 100));
+  // Apply non-linear boost: if ANY AI signals detected, amplify
+  const hasAiSignal = phraseDensity > 0 || formalDensity > 0.1 || burstiness > 0.3;
+  const boosted = hasAiSignal ? Math.min(1, docScore * 1.25) : docScore;
+  const overallScore = Math.round(Math.max(0, Math.min(100, boosted * 100)) * 10) / 10;
   
   const outSentences = sentences.map(s => {
     const sc = s.toLowerCase().replace(/[,.!?;:'"()\[\]{}]/g, ' ').replace(/\s+/g, ' ').trim();
