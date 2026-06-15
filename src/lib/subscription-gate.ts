@@ -32,7 +32,7 @@ const LS_KEY = 'verifyai_free_scans';
 export async function hasActiveSubscription(userId: string): Promise<boolean> {
   try {
     const client = getAdminClient();
-    const { data: sub } = await client
+    const { data: sub, error } = await client
       .from('subscriptions')
       .select('expires_at')
       .eq('user_id', userId)
@@ -41,8 +41,8 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
       .limit(1)
       .maybeSingle();
 
-    if (!sub) return false;
-    return new Date(sub.expires_at) > new Date();
+    if (error || !sub) return false;
+    return new Date((sub as any).expires_at) > new Date();
   } catch {
     return false;
   }
